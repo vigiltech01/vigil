@@ -1,116 +1,209 @@
-# Introducing Vigil: see what your FortiGate sees
+# Watch your FortiGate in 3D: a free, open-source live traffic dashboard
 
-*September 2026 · 6 minute read*
+*September 2026 · 7 minute read · [Vigil on GitHub](https://github.com/vigiltech01/vigil)*
 
-![Vigil home screen](../images/home.png)
+![Vigil live 3D view of FortiGate traffic](../images/live-graph.gif)
 
-Every FortiGate keeps a detailed diary. Each allowed session, each blocked scan, each exploit attempt caught by IPS and each
-configuration change is written to a log line. The problem is volume: a single internet-facing firewall easily writes
-millions of lines a day, and the questions people actually ask - *are we being attacked right now? which rule let that IP
-in? why can't this user reach the service?* - are buried in them.
+Every FortiGate facing the internet is under constant attack. Scanners probe every port, bots guess passwords, and
+exploit kits test your web server, thousands of times an hour. It is all in the logs, but the logs are a wall of text.
+Most people never see it.
 
-**Vigil** is a free, open-source dashboard that turns FortiGate syslog into answers. It runs as one Docker container, needs
-nothing installed on the firewall, and is ready in about a minute.
+**Vigil** is a free, open-source FortiGate dashboard that turns that text into something you can *watch*: a live 3D
+model of your firewall with every inbound request flying in as a particle. It runs as one Docker container. The
+integration is one CLI block on the firewall. Nothing is installed on the FortiGate and no credentials are needed.
 
 ```bash
-git clone https://github.com/MrkktestHari/vigil.git && cd vigil && docker compose up -d
+git clone https://github.com/vigiltech01/vigil.git && cd vigil && docker compose up -d
 ```
 
-> All screenshots below come from Vigil's demo mode - a fictional firewall called `FGT-DEMO` using documentation-only IP
-> ranges. You can run the same demo with `VIGIL_DEMO=1 docker compose up -d`.
-
-## A calm home screen
-
-The home screen answers one question: *is everything all right?* It shows how many inbound requests were blocked, how many
-exploit attempts IPS stopped, what was allowed in, and a security grade for the rules that face the internet. Underneath,
-a short list tells you what needs attention first - in plain language, with a link to the evidence.
-
-The design is intentionally quiet: a black canvas, large light numbers and very little chrome, so the few things that
-matter stand out.
-
-## Watching the internet knock on the door
-
-![Live traffic view](../images/live-graph.png)
-
-The **Live** view draws your firewall as a glass sphere. The services your rules really publish sit inside it. Every
-inbound request is a particle flying in from its country of origin:
-
-- **Blue** requests pass through the glass to the service they were allowed to reach.
-- **Red** requests hit a *closed port* - no rule opens it, so they bounce off one of the "doors" on the outer ring. This
-  is what internet scanning looks like, and there is a lot of it.
-- **Orange** requests aimed at a port that *is* open, but from a source that rule does not allow.
-- **Pink** requests were aimed at the firewall itself - admin pages, VPN portals, SNMP.
-- **Yellow** and **violet** requests were allowed by a rule and then stopped by a security profile or matched an IPS
-  signature.
-
-On the left, a live counter shows requests per second and *why* traffic was denied. Below, a timeline covers the whole
-selected range with markers for exploit attempts and password guessing; click anywhere to replay that moment.
-
-The part people enjoy most: press **Freeze**, click any particle, and Vigil shows that exact request - source and port,
-public address, NAT translation, rule, application, client reputation - read back from the original log line.
-
-![Capturing a single request](../images/live-graph-capture.png)
-
-## Which rules put you at risk?
-
-![Inbound security summary](../images/security-summary.png)
-
-Upload a FortiGate configuration backup (passwords, keys and certificates are removed before anything is saved) and Vigil
-grades every rule that lets internet traffic in. The score combines a handful of questions a security reviewer would ask:
-
-1. **Who can connect?** Anyone on the internet, whole countries, cloud provider ranges, or only approved addresses.
-2. **What is exposed?** A web site is a different risk from remote desktop, a database or the firewall's own admin page.
-3. **Is the software actively exploited?** Vigil references the CISA Known Exploited Vulnerabilities catalog for each kind
-   of service.
-4. **Is anything inspecting the traffic?** No IPS sensor or a monitor-only application sensor raises the score.
-5. **What do the logs show?** Password guessing against the rule adds to the risk.
-
-![Rule cards](../images/security-rules.png)
-
-Each rule gets a card that explains, in a sentence, who can reach what - plus how an attacker could use the rule
-(with MITRE ATT&CK techniques), what to do about it, and the FortiOS commands to tighten it.
-
-## Configuration changes, the moment they happen
-
-A backup is a snapshot; firewalls change daily. Vigil keeps up without any access to the firewall by reading the
-FortiGate's own change log - the `Object attribute configured` events FortiOS writes for every GUI, CLI or API change.
-Each change is replayed on top of the backup in order, so if someone disables a rule or widens its source, the risk score
-and the rule card update within seconds, and a notification tells you who changed what.
-
-![Configuration changes](../images/security-changes.png)
-
-Some things logs genuinely cannot tell - for example the new position of a moved rule. Vigil marks those rules instead of
-guessing.
-
-## "Why was this blocked?"
-
-![Investigation](../images/investigate.png)
-
-The **Investigate** page accepts questions the way people ask them: *why was 198.51.100.201 blocked*, *port 3389 denied from
-China*, *policy 5 blocked*, a session ID or a domain. Vigil searches up to 30 days, correlates records that belong to the same
-session across traffic, application control, IPS and web filter logs, and reconstructs the path - ingress interface, policy,
-NAT, security profiles and the final decision - with an explanation in plain English. Where the logs do not contain a piece
-of information, Vigil says so rather than inventing it.
-
-## Built to run anywhere quietly
-
-- **One container**, one volume, a health check, and automatic restarts of its internal components.
-- **Both FortiOS log formats** (`default` and `cef`), UDP or TCP, several firewalls at once.
-- **Resource guards**: bounded memory for database queries, time budgets for large searches, a memory watchdog and
-  pre-computed 24-hour, 7-day and 30-day views.
-- **Private by design**: no outbound connections, no telemetry, sanitised configuration storage, hashed credentials.
-
-## Get started
-
-1. `git clone https://github.com/MrkktestHari/vigil.git && cd vigil && docker compose up -d`
-2. Open `http://<host>:8080` and create the admin account.
-3. Follow **Connect your FortiGate** - two CLI blocks on the firewall.
-4. Optionally upload a configuration backup to turn on rule grading.
-
-The code is Apache 2.0 licensed. Issues, ideas and pull requests are welcome on
-[GitHub](https://github.com/MrkktestHari/vigil).
+> Every image in this post comes from Vigil's demo mode: a fictional firewall called `FGT-DEMO` using
+> documentation-only IP addresses. Run the same demo yourself with `VIGIL_DEMO=1 docker compose up -d`.
 
 ---
 
-*FortiGate and FortiOS are trademarks of Fortinet, Inc. Vigil is an independent project and is not affiliated with or
-endorsed by Fortinet.*
+## The live 3D view
+
+![Live 3D traffic view](../images/live-graph.png)
+
+Open **Live** and you are looking at your firewall as a glass sphere.
+
+- **Inside the sphere** are the services your firewall really publishes to the internet: your web site, mail server,
+  VPN portal, a partner SFTP. What you see is what the internet can reach.
+- **Around the sphere** is a ring of red "doors": ports that are *closed*. No rule opens them, so every request that
+  hits one is dropped at the edge.
+- **Every particle is one real log line.** Requests fly in from their country of origin, and where they end up is
+  the firewall's decision.
+
+The colour tells you the outcome at a glance:
+
+| Colour | What happened |
+|---|---|
+| **Blue** | Allowed. The particle passes through the glass to the service it was allowed to reach. |
+| **Red** | Closed port. It bounces off a door. This is internet scanning, and there is always a lot of it. |
+| **Orange** | The port *is* open, but not for this source (e.g. a partner-only rule). |
+| **Pink** | Denied by an explicit deny rule, or aimed at the firewall itself: admin pages, SSL-VPN, SNMP. |
+| **Yellow** | Allowed by a rule, then stopped by a security profile. |
+| **Violet** | An IPS signature matched: an exploit attempt. |
+
+Around the scene, live panels explain what you are watching:
+
+- **Requests per second** with allowed / denied / security-block / IPS counters for the last minute.
+- **Why was it denied?** Closed port, source not allowed, deny rule or firewall itself, with the ports behind each
+  reason. Click a reason to highlight exactly those particles.
+- **Live requests:** a scrolling list of the newest requests; click one to capture it.
+- **Ports under fire:** which ports attract the most traffic, and whether they are actually open.
+- **Top attackers:** country, how many ports they tried and why they were stopped.
+- **IPS alerts** pop up at the top of the scene as they happen.
+
+### Freeze time and capture a single request
+
+![Capturing a single request](../images/live-graph-capture.png)
+
+This is the moment people remember. Press **Freeze** (or **Slow-mo**) and the particles stop in mid-air. Hover
+over one, click it, and Vigil shows *that exact request*:
+
+- a plain-language explanation ("Denied: port 110 is closed. No firewall rule opens this port…")
+- source address and port, country, public destination and NAT translation
+- the policy it matched, the application, the decision and client reputation
+- the **original FortiGate log line**, read straight from disk
+
+From there, **Investigate this request** reconstructs the full path of the session. **Trace** follows everything
+that source IP did.
+
+### Rewind the day
+
+The timeline under the scene covers the selected range: allowed traffic in blue, denied in red, with markers for
+exploit attempts and password-guessing bursts. Click anywhere to replay that moment at 1×, 5×, 20× or 60× speed. You
+can also jump straight to the **next attack**. Recent periods replay the original log lines; older periods are rebuilt
+from Vigil's summaries and marked as such.
+
+**Full screen** turns it into a wall display for a NOC or SOC.
+
+---
+
+## How simple is the integration?
+
+Three steps, and you are watching live traffic in about a minute.
+
+### Step 1: start Vigil (one command)
+
+Any Linux machine or VM with Docker: 2 CPUs, 2 GB RAM and 20 GB disk are plenty for a typical firewall.
+
+```bash
+git clone https://github.com/vigiltech01/vigil.git && cd vigil && docker compose up -d
+```
+
+Open `http://<that-machine>:8080` and create the administrator account.
+
+### Step 2: point the FortiGate at it (one CLI block)
+
+Paste this into the FortiGate CLI console. The Welcome page shows it with your address already filled in and a
+**Copy** button:
+
+```
+config log syslogd setting
+    set status enable
+    set server "<vigil-machine-ip>"
+    set port 514
+    set format default
+end
+config log syslogd filter
+    set severity information
+    set forward-traffic enable
+    set local-traffic enable
+    set anomaly enable
+end
+```
+
+That is the whole integration. Both FortiOS log formats (`default` and `cef`) work, over UDP or TCP.
+
+### Step 3: watch the checklist turn green
+
+![Connect your FortiGate checklist](../images/welcome.png)
+
+The Welcome page checks the connection live, every few seconds:
+
+1. Vigil is running
+2. Syslog receiver listening
+3. Syslog arriving, with the sender address
+4. FortiGate logs recognised, with the firewall name
+5. Configuration backup (optional)
+
+When the logs arrive, a **Connected** notification appears and the 3D view comes alive.
+
+### What you do *not* need
+
+- **No agent** on the firewall and no changes to your policies.
+- **No API user, API token, SSH access or firewall password.** Vigil never connects to the FortiGate; it only
+  listens.
+- **No FortiAnalyzer, FortiCloud licence or external SIEM.**
+- **No database to install and no cloud account.** Everything runs in one container with one Docker volume, and no
+  data leaves your network.
+
+Two optional extras make the picture richer. Enable implicit-deny and local-in-deny logging so you see the scanners
+([how](../FORTIGATE.md#2-log-the-traffic-that-makes-vigil-useful)). Upload a configuration backup to turn on rule
+grading (passwords and keys are stripped before it is saved).
+
+---
+
+## More than a pretty picture
+
+The 3D view is the front door. Behind it:
+
+### Inbound security grade
+
+![Inbound security summary](../images/security-summary.png)
+
+With a configuration backup loaded, every internet-facing rule gets a 0-100 risk score. The score considers who can
+connect, what the rule exposes, known exploited vulnerabilities for that kind of service (CISA KEV), and whether IPS or
+application control inspects the traffic. Each rule card explains the risk in one sentence, lists MITRE ATT&CK
+techniques and gives the FortiOS commands to tighten it.
+
+### Configuration changes, live, from the logs
+
+![Configuration changes](../images/security-changes.png)
+
+Vigil follows the FortiGate's own change log (`Object attribute configured`). Disable a rule, widen a source or remove
+an IPS sensor, and the grade updates within seconds, with who changed what. Still no API access.
+
+### Investigations in plain English
+
+![Investigation](../images/investigate.png)
+
+Ask *why was 198.51.100.201 blocked*, *port 3389 denied from China* or *policy 5 blocked*. Vigil searches up to 30
+days, correlates traffic, IPS, application control and web filter records of the same session, and explains the decision
+hop by hop. Where the logs do not say something, Vigil tells you instead of guessing.
+
+### And the everyday views
+
+Threats & UTM, outbound domains and machines, activity, a log explorer, a rule assistant and a health page. It also
+detects port scans, password guessing, IPs that were blocked and later got in, protocol abuse, spikes and new source
+countries.
+
+---
+
+## Built to run quietly
+
+- **One container**: syslog receiver, processing and web UI, with automatic restarts and a Docker health check.
+- **Light**: tens of log lines per second in a few hundred MB of RAM. Memory guards, query time budgets and
+  pre-computed 24-hour, 7-day and 30-day views keep large searches from hurting the host.
+- **Private**: no telemetry, no outbound connections, hashed credentials, sanitised configuration storage.
+- **Multi-arch**: images for amd64 and arm64.
+
+## Try it now
+
+```bash
+# with a FortiGate
+git clone https://github.com/vigiltech01/vigil.git && cd vigil && docker compose up -d
+
+# without one: two days of fictional traffic, live
+VIGIL_DEMO=1 docker compose up -d
+```
+
+Vigil is Apache 2.0 licensed. If it helps you, a ⭐ on [GitHub](https://github.com/vigiltech01/vigil) helps other
+FortiGate admins find it. Issues, ideas and pull requests are welcome.
+
+---
+
+*FortiGate, FortiOS, FortiAnalyzer and Fortinet are trademarks of Fortinet, Inc. Vigil is an independent project and
+is not affiliated with or endorsed by Fortinet.*

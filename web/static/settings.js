@@ -101,7 +101,7 @@ PAGES.settings = {
 
       <section class="set-sec" id="set-about"><h3>About</h3>
         <dl class="kv-list"><dt>Version</dt><dd>Vigil ${esc(d.version)}</dd><dt>Mode</dt><dd>${d.demo ? '<span class="demo-badge">Demo · fictional data</span>' : 'Production'}</dd>
-          <dt>License</dt><dd>Apache 2.0</dd><dt>Source &amp; docs</dt><dd><a href="https://github.com/MrkktestHari/vigil" target="_blank" rel="noopener">github.com/MrkktestHari/vigil</a></dd>
+          <dt>License</dt><dd>Apache 2.0</dd><dt>Source &amp; docs</dt><dd><a href="https://github.com/vigiltech01/vigil" target="_blank" rel="noopener">github.com/vigiltech01/vigil</a></dd>
           <dt>Trademarks</dt><dd class="muted">FortiGate and FortiOS are trademarks of Fortinet, Inc. Vigil is an independent project, not affiliated with or endorsed by Fortinet.</dd></dl></section>`;
     // navigation + scroll-spy
     const secId = S.params.s;

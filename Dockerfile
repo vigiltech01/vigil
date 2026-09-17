@@ -19,7 +19,7 @@ FROM python:3.12-slim
 LABEL org.opencontainers.image.title="Vigil" \
       org.opencontainers.image.description="FortiGate syslog dashboard: live threats, inbound rule risk, investigations" \
       org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.source="https://github.com/MrkktestHari/vigil"
+      org.opencontainers.image.source="https://github.com/vigiltech01/vigil"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 VIGIL_DATA=/data
 RUN useradd --system --uid 10001 --home-dir /app --shell /usr/sbin/nologin vigil
 WORKDIR /app

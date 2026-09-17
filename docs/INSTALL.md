@@ -19,13 +19,13 @@ as counts, which keeps busy perimeter firewalls affordable.
 ## Install
 
 ```bash
-git clone https://github.com/MrkktestHari/vigil.git
+git clone https://github.com/vigiltech01/vigil.git
 cd vigil
 cp .env.example .env        # optional: ports, retention, allowed senders
 docker compose up -d
 ```
 
-`docker compose up -d` pulls the published image (`ghcr.io/mrkktesthari/vigil`). If the image is unavailable - for example on
+`docker compose up -d` pulls the published image (`ghcr.io/vigiltech01/vigil`). If the image is unavailable - for example on
 an offline network with a local mirror - build it yourself with `docker compose build`.
 
 Open `http://<host>:8080`. The first visitor creates the administrator account, so do this right after installing - or set

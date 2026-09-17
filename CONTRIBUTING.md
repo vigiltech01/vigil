@@ -5,7 +5,7 @@ Thanks for helping! Bug reports, FortiOS log samples (anonymised), documentation
 ## Development setup
 
 ```bash
-git clone https://github.com/MrkktestHari/vigil.git && cd vigil
+git clone https://github.com/vigiltech01/vigil.git && cd vigil
 python3.12 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-dev.txt
 pytest                                   # unit + end-to-end tests, about 20 seconds

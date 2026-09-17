@@ -1,0 +1,37 @@
+# GitHub Pages site for Vigil (built from /docs on main)
+title: "Vigil: live 3D FortiGate traffic dashboard"
+description: >-
+  Free, open-source FortiGate syslog dashboard. Watch every inbound request hit your firewall in real time in 3D,
+  grade risky rules and investigate blocks in plain English. One Docker container, one CLI block, no agent or API keys.
+url: https://vigiltech01.github.io
+baseurl: /vigil
+lang: en
+logo: /images/logo.svg
+author: vigiltech01
+github:
+  repository_url: https://github.com/vigiltech01/vigil
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-relative-links
+  - jekyll-optional-front-matter
+  - jekyll-titles-from-headings
+relative_links:
+  enabled: true
+  collections: false
+titles_from_headings:
+  enabled: true
+  strip_title: false
+defaults:
+  - scope:
+      path: ""
+    values:
+      image: /images/social-preview.png
+      twitter:
+        card: summary_large_image
+  - scope:
+      path: "blog"
+    values:
+      description: >-
+        A live 3D view of FortiGate traffic: every inbound request as a particle, freeze and capture any request,
+        and a one-minute syslog integration with no agent, no API user and no FortiAnalyzer.

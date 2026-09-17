@@ -3,7 +3,7 @@
 # Point the FortiGate's syslog at this host, UDP (or TCP) port 514. Settings: copy .env.example to .env.
 services:
   vigil:
-    image: ghcr.io/mrkktesthari/vigil:${VIGIL_VERSION:-latest}
+    image: ghcr.io/vigiltech01/vigil:${VIGIL_VERSION:-latest}
     build: .
     container_name: vigil
     restart: unless-stopped
