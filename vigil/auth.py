@@ -211,4 +211,13 @@ def setup_page(error='', user='admin'):
   <input type="password" id="p" name="password" autocomplete="new-password" required autofocus>
   <label for="c">Repeat password</label><input type="password" id="c" name="confirm" autocomplete="new-password" required>
   <div style="height:22px"></div><button type="submit">Create account</button>
-  <div class="note">This page is only available until an account exists.<br>Stored as a salted PBKDF2 hash in the data volume.</div></form>''')
+  <div class="note">This page is only available until an account exists.<br>Stored as a salted PBKDF2 hash in the data volume.</div>
+  {_telemetry_note()}</form>''')
+
+
+def _telemetry_note():
+    from . import community
+    if not community.COMMUNITY_URL or community.ENV_OFF:
+        return ''
+    return ('<div class="note" style="margin-top:14px">Vigil sends an anonymous daily usage ping (random install ID, version, rough log '
+            'volume - never logs, IP addresses or names). Turn it off in Settings &rarr; Community or with VIGIL_TELEMETRY=off.</div>')

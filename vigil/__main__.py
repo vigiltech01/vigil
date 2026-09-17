@@ -47,6 +47,9 @@ def _component(name):
     elif name == 'demo':
         from . import demo
         demo.run()
+    elif name == 'community':
+        from . import community
+        community.run()
     else:
         raise SystemExit(f'unknown component {name}')
 
@@ -69,7 +72,8 @@ def supervise():
     from . import auth, db
     auth.bootstrap_from_env()
     db.connect().close()                                  # create / migrate the schema once, before the readers start
-    names = COMPONENTS + (['demo'] if settings.DEMO else [])
+    from . import community
+    names = COMPONENTS + (['demo'] if settings.DEMO else []) + (['community'] if community.COMMUNITY_URL and not community.ENV_OFF else [])
     procs = {n: {'proc': None, 'restarts': 0, 'started': None, 'next': 0.0, 'backoff': 1.0} for n in names}
     stopping = []
 
@@ -151,7 +155,7 @@ def main():
     args = sys.argv[1:]
     if not args:
         supervise()
-    elif args[0] in ('receiver', 'ingest', 'web', 'demo'):
+    elif args[0] in ('receiver', 'ingest', 'web', 'demo', 'community'):
         _component(args[0])
     elif args[0] == 'import-config':
         import_config(args[1:])

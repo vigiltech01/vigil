@@ -44,7 +44,7 @@ jobs:
 
       - name: Smoke test (demo mode)
         run: |
-          docker run -d --name vigil -p 8080:8080 -e VIGIL_DEMO=1 -e VIGIL_DEMO_HISTORY_HOURS=2 \
+          docker run -d --name vigil -p 8080:8080 -e VIGIL_TELEMETRY=off -e VIGIL_DEMO=1 -e VIGIL_DEMO_HISTORY_HOURS=2 \
             -e VIGIL_ADMIN_USER=admin -e VIGIL_ADMIN_PASSWORD=ci-smoke-password vigil:ci
           for i in $(seq 60); do
             [ "$(docker inspect -f '{{.State.Health.Status}}' vigil)" = healthy ] && break; sleep 3

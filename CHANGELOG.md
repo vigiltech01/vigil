@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Community & investors: contact form in the app (Settings, Welcome page) and on the website, delivered to the team's Google Sheet and email.
+- Anonymous daily usage ping (random install ID, version, rough volume) with a Settings switch and `VIGIL_TELEMETRY=off`.
+- GitHub Sponsors button and daily repository statistics workflow.
+
 ## 1.0.1 - 2026-09-17
 
 - Project moved to github.com/vigiltech01/vigil; Docker image is now `ghcr.io/vigiltech01/vigil`.

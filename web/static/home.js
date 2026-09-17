@@ -105,7 +105,7 @@ PAGES.welcome = {
   layout: () => `<div class="welcome">
       <section class="intro"><div class="eyebrow">Welcome to Vigil</div><h2>Connect your FortiGate</h2>
         <p>Vigil listens for FortiGate syslog and turns it into live threat views, rule risk scores and one-click investigations.
-        Point the firewall at this machine - nothing is installed on the FortiGate and nothing leaves your network.</p></section>
+        Point the firewall at this machine - nothing is installed on the FortiGate and your logs never leave this machine.</p></section>
       <section class="card"><header><h3>1 · Send syslog to Vigil</h3><span class="sub">Paste into the FortiGate CLI (System → CLI console, or SSH). Replace the address if this machine is reached through a different one.</span></header>
         <div class="body"><div class="copyable"><pre class="cli" id="wl-cli"></pre><button id="wl-copy">Copy</button></div>
         <div class="note" style="margin-top:12px">Both FortiOS log formats work (<span class="mono">default</span> and <span class="mono">cef</span>). For TCP instead of UDP add
@@ -128,6 +128,8 @@ end</pre><button id="wl-copy2">Copy</button></div></div></section>
           <a href="#settings?s=config">Settings → Configuration</a>. Passwords, keys and certificates are removed on upload.</p>
           <p class="muted">Just exploring? Start Vigil with <span class="mono">VIGIL_DEMO=1</span> to see it working with a fictional firewall.</p>
           <a class="btn-primary" style="display:inline-block;padding:8px 18px;border-radius:999px" href="#home">Go to Home</a></div></section>
+      <section class="card wl-contact"><header><h3>Stay in touch <span class="muted" style="font-weight:400">(optional)</span></h3><span class="sub">Vigil is built by a small startup. Tell us who you are - we share updates, answer questions, and investors and crowdfunding backers are very welcome.</span></header>
+        <div class="body" id="wl-contact"></div></section>
     </div>`,
   async load() {
     clearInterval(S.welcomeTimer);
@@ -168,6 +170,11 @@ end`;
     };
     $('#wl-copy').onclick = e => copyText($('#wl-cli').textContent, e.target);
     $('#wl-copy2').onclick = e => copyText($('#wl-cli2').textContent, e.target);
+    api('/api/settings').then(st => {
+      const url = (st.community || {}).url;
+      $('#wl-contact').innerHTML = contactFormH('cf-welcome', url);
+      bindContactForm('cf-welcome', url, 'welcome');
+    }).catch(() => {});
     await draw();
     S.welcomeTimer = setInterval(() => draw().catch(() => {}), 3000);
   },

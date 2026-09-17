@@ -1,0 +1,44 @@
+name: Repository stats
+
+# Daily aggregate numbers for the maintainers: stars, image downloads, views, clones, referrers.
+# Stored on the "stats" branch (stats/daily.jsonl) and, if configured, in the community Google Sheet.
+# Optional: secret STATS_TOKEN (fine-grained token, this repo, "Administration: read") for views/clones/referrers,
+#           variable COMMUNITY_URL + secret STATS_SECRET for the Google Sheet (tools/google-apps-script).
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: stats
+
+jobs:
+  stats:
+    if: github.repository == 'vigiltech01/vigil'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out the stats branch
+        run: |
+          git fetch origin stats && git worktree add stats-branch origin/stats && git -C stats-branch switch -c stats \
+            || { git worktree add --detach stats-branch && git -C stats-branch switch --orphan stats; }
+          mkdir -p stats-branch/stats
+      - name: Collect
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATS_TOKEN: ${{ secrets.STATS_TOKEN }}
+          COMMUNITY_URL: ${{ vars.COMMUNITY_URL }}
+          STATS_SECRET: ${{ secrets.STATS_SECRET }}
+          STATS_FILE: stats-branch/stats/daily.jsonl
+        run: python3 scripts/repo_stats.py
+      - name: Save
+        working-directory: stats-branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stats/daily.jsonl
+          git commit -m "stats $(date -u +%F)"
+          git push origin stats

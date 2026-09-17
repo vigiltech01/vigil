@@ -47,6 +47,11 @@ No agent, no API user or token, no firewall password, no FortiAnalyzer, no cloud
 
 ![Inbound security grade](images/security-summary.png)
 
+## Who builds Vigil
+
+Vigil is built by a small startup building the best open-source security and SIEM tools. **Investors** and
+**crowdfunding** backers are welcome: [contact us](contact.md) or [sponsor us on GitHub](https://github.com/sponsors/vigiltech01).
+
 ## Documentation
 
 - [Blog: Watch your FortiGate in 3D](blog/introducing-vigil.md)
@@ -54,6 +59,7 @@ No agent, no API user or token, no firewall password, no FortiAnalyzer, no cloud
 - [Install guide](INSTALL.md): requirements, HTTPS, backups, upgrades
 - [Architecture](ARCHITECTURE.md)
 - [Troubleshooting](TROUBLESHOOTING.md)
+- [Contact us / investors](contact.md)
 
 ---
 

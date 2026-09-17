@@ -2,7 +2,7 @@
 /* Settings (#settings): connection, configuration backup, preferences, network context, tuning, account. */
 
 const SET_SECTIONS = [['connection', 'Connection'], ['config', 'Configuration backup'], ['general', 'General'], ['network', 'Network context'],
-  ['detection', 'Detection tuning'], ['allowlist', 'Outbound allow-list'], ['account', 'Account'], ['about', 'About']];
+  ['detection', 'Detection tuning'], ['allowlist', 'Outbound allow-list'], ['account', 'Account'], ['community', 'Community & investors'], ['about', 'About']];
 
 async function sendJSON(method, url, body) {
   const r = await fetch(url, {method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
@@ -99,6 +99,8 @@ PAGES.settings = {
         <div class="save-row"><button class="btn-primary" id="p-save">Change password</button><span class="msg" id="msg-account"></span></div>
         <div class="note" style="margin-top:14px">Forgot the password? On the host run <span class="mono">docker exec -it vigil python -m vigil reset-password ${esc(d.account.user || 'admin')}</span></div></section>
 
+      ${communitySectionH(d)}
+
       <section class="set-sec" id="set-about"><h3>About</h3>
         <dl class="kv-list"><dt>Version</dt><dd>Vigil ${esc(d.version)}</dd><dt>Mode</dt><dd>${d.demo ? '<span class="demo-badge">Demo · fictional data</span>' : 'Production'}</dd>
           <dt>License</dt><dd>Apache 2.0</dd><dt>Source &amp; docs</dt><dd><a href="https://github.com/vigiltech01/vigil" target="_blank" rel="noopener">github.com/vigiltech01/vigil</a></dd>
@@ -160,6 +162,7 @@ PAGES.settings = {
       allowlist: () => ({domain_allowlist: $('#a-dom').value.split(/[\n,\s]+/).map(x => x.trim()).filter(Boolean)}),
     };
     document.querySelectorAll('[data-save]').forEach(b => b.onclick = () => saveSection(b.dataset.save, patches[b.dataset.save]));
+    bindCommunitySection(d);
     $('#p-save').onclick = async () => {
       const msg = $('#msg-account');
       try {

@@ -22,7 +22,7 @@ Security fixes are made for the latest release.
 
 ## What Vigil does to protect your data
 
-- No outbound network connections, no telemetry.
+- No outbound network connections except an optional anonymous daily usage ping (random install ID, version, rough log volume) that you can turn off with `VIGIL_TELEMETRY=off` - see `vigil/community.py` for exactly what it contains.
 - Configuration backups are sanitised before they are stored (passwords, keys, certificates, `ENC` values removed).
 - Password hashes use PBKDF2-SHA256 with 600,000 iterations; session cookies are signed, HttpOnly and SameSite=Lax.
 - The container runs as a non-root user.

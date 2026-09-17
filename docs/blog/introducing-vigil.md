@@ -138,7 +138,7 @@ When the logs arrive, a **Connected** notification appears and the 3D view comes
   listens.
 - **No FortiAnalyzer, FortiCloud licence or external SIEM.**
 - **No database to install and no cloud account.** Everything runs in one container with one Docker volume, and no
-  data leaves your network.
+  log data leaves your network.
 
 Two optional extras make the picture richer. Enable implicit-deny and local-in-deny logging so you see the scanners
 ([how](../FORTIGATE.md#2-log-the-traffic-that-makes-vigil-useful)). Upload a configuration backup to turn on rule
@@ -187,7 +187,8 @@ countries.
 - **One container**: syslog receiver, processing and web UI, with automatic restarts and a Docker health check.
 - **Light**: tens of log lines per second in a few hundred MB of RAM. Memory guards, query time budgets and
   pre-computed 24-hour, 7-day and 30-day views keep large searches from hurting the host.
-- **Private**: no telemetry, no outbound connections, hashed credentials, sanitised configuration storage.
+- **Private**: your logs never leave the host; hashed credentials, sanitised configuration storage. The only outbound
+  request is an anonymous daily usage ping you can switch off.
 - **Multi-arch**: images for amd64 and arm64.
 
 ## Try it now
@@ -199,6 +200,11 @@ git clone https://github.com/vigiltech01/vigil.git && cd vigil && docker compose
 # without one: two days of fictional traffic, live
 VIGIL_DEMO=1 docker compose up -d
 ```
+
+## Who builds Vigil
+
+Vigil is built by a small startup. We are building the best open-source security and SIEM tools, starting with
+FortiGate. **Investors**, we would love to talk, and we are **open to crowdfunding**: [contact us](https://vigiltech01.github.io/vigil/contact) or [sponsor us on GitHub](https://github.com/sponsors/vigiltech01).
 
 Vigil is Apache 2.0 licensed. If it helps you, a ⭐ on [GitHub](https://github.com/vigiltech01/vigil) helps other
 FortiGate admins find it. Issues, ideas and pull requests are welcome.
