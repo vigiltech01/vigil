@@ -60,5 +60,4 @@ Heavy dashboard ranges (24 h, 7 d, 30 d) are pre-computed by a background warmer
 - Single administrator account; PBKDF2-SHA256 (600k iterations) password hash, random session key, HttpOnly SameSite cookies,
   login rate limiting, first-run setup closes after the account exists.
 - The container runs as an unprivileged user; the receiver listens on port 5514 inside the container.
-- Logs, configuration and investigations never leave the host. The only outbound request is an optional anonymous daily usage ping (random install ID, version, rough log volume) that you can turn off with `VIGIL_TELEMETRY=off`.
-  Front-end libraries are bundled into the image at build time (checksum-verified).
+- No outbound connections and no telemetry. Front-end libraries are bundled into the image at build time (checksum-verified).

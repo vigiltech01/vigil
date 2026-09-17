@@ -2,8 +2,7 @@
 
 ## Unreleased
 
-- Community & investors: contact form in the app (Settings, Welcome page) and on the website, delivered to the team's Google Sheet and email.
-- Anonymous daily usage ping (random install ID, version, rough volume) with a Settings switch and `VIGIL_TELEMETRY=off`.
+- Community & investors: contact form in the app (Settings, Welcome page) and on the website, delivered by email to the team.
 - GitHub Sponsors button and daily repository statistics workflow.
 
 ## 1.0.1 - 2026-09-17

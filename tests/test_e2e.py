@@ -106,12 +106,6 @@ def test_settings_upload_and_password(client):
     assert client.put('/api/settings', json={'retention_days': 'x'}).status_code == 400
     assert client.put('/api/settings', json={'nope': 1}).status_code == 400
     assert client.put('/api/settings', json={'retention_days': True}).status_code == 400
-    assert client.put('/api/settings', json={'telemetry': 'yes'}).status_code == 400
-    r = client.put('/api/settings', json={'telemetry': False})
-    assert r.status_code == 200 and r.json()['settings']['telemetry'] is False
-    st = client.get('/api/settings').json()
-    assert st['community']['telemetry']['enabled'] is False and 'instance_id' in st['community']['telemetry']['preview']
-    client.put('/api/settings', json={'telemetry': True})
     with open(demo.DEMO_CONFIG, 'rb') as f:
         r = client.post('/api/config/upload', files={'file': ('edge.conf', f.read())}, data={'backup_time': str(int(time.time() * 1000))})
     assert r.status_code == 200 and r.json()['imported']['policies'] == 7

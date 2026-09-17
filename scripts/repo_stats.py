@@ -3,7 +3,7 @@
 
 Collects stars, forks, watchers, open issues, total Docker image downloads and - when STATS_TOKEN is set (a token
 with access to repository traffic) - 14-day views, clones, top referrers and top pages. Prints one JSON line, appends
-it to stats/daily.jsonl and, when COMMUNITY_URL and STATS_SECRET are set, posts it to the community Google Sheet.
+it to stats/daily.jsonl.
 Only aggregate numbers GitHub publishes to repository owners - nothing about individual people.
 """
 import datetime as dt
@@ -61,12 +61,6 @@ def main():
         lines = [ln for ln in lines if json.loads(ln).get('date') != row['date']]   # a re-run replaces today's row
         with open(out, 'w') as f:
             f.write('\n'.join(lines + [json.dumps(row)]) + '\n')
-    url, secret = os.environ.get('COMMUNITY_URL'), os.environ.get('STATS_SECRET')
-    if url and secret:
-        body = json.dumps(dict(row, type='stats', secret=secret)).encode()
-        req = urllib.request.Request(url, data=body, headers={'Content-Type': 'text/plain;charset=utf-8'})
-        with urllib.request.urlopen(req, timeout=30) as r:
-            print('sheet:', r.status, r.read(200).decode(errors='replace'))
 
 
 if __name__ == '__main__':

@@ -1,9 +1,8 @@
 name: Repository stats
 
 # Daily aggregate numbers for the maintainers: stars, image downloads, views, clones, referrers.
-# Stored on the "stats" branch (stats/daily.jsonl) and, if configured, in the community Google Sheet.
+# Stored on the "stats" branch (stats/daily.jsonl).
 # Optional: secret STATS_TOKEN (fine-grained token, this repo, "Administration: read") for views/clones/referrers,
-#           variable COMMUNITY_URL + secret STATS_SECRET for the Google Sheet (tools/google-apps-script).
 
 on:
   schedule:
@@ -30,8 +29,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           STATS_TOKEN: ${{ secrets.STATS_TOKEN }}
-          COMMUNITY_URL: ${{ vars.COMMUNITY_URL }}
-          STATS_SECRET: ${{ secrets.STATS_SECRET }}
           STATS_FILE: stats-branch/stats/daily.jsonl
         run: python3 scripts/repo_stats.py
       - name: Save

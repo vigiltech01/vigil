@@ -18,7 +18,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import __version__, auth, cache, community, db, explorer, fgconf, graph3d, insights, investigate, queries, rules, security, settings
+from . import __version__, auth, cache, db, explorer, fgconf, graph3d, insights, investigate, queries, rules, security, settings
 
 STATIC = os.path.join(settings.APP_DIR, 'web', 'static')
 log = logging.getLogger('vigil.web')
@@ -406,8 +406,7 @@ def get_settings():
     a = auth.account() or {}
     return {'settings': settings.load(), 'config': _config_info(), 'receiver': _read_status('receiver.json'),
             'account': {'user': a.get('user'), 'changed': a.get('changed')}, 'demo': settings.DEMO, 'version': __version__,
-            'syslog_port': int(os.environ.get('VIGIL_SYSLOG_PUBLISHED_PORT', '514')),
-            'community': {'url': community.COMMUNITY_URL, 'telemetry': community.status()}}
+            'syslog_port': int(os.environ.get('VIGIL_SYSLOG_PUBLISHED_PORT', '514'))}
 
 
 @app.put('/api/settings')
@@ -419,11 +418,11 @@ async def put_settings(request: Request):
     if not isinstance(patch, dict):
         raise HTTPException(400, 'expected a JSON object')
     types = {'firewall_name': str, 'interfaces': dict, 'vpn_pools': list, 'expected_apps': dict, 'domain_allowlist': list,
-             'retention_days': int, 'device_tz_hours': (int, float), 'telemetry': bool}
+             'retention_days': int, 'device_tz_hours': (int, float)}
     for k, v in patch.items():
         if k not in types:
             raise HTTPException(400, f'unknown setting {k}')
-        if not isinstance(v, types[k]) or (isinstance(v, bool) and types[k] is not bool):
+        if not isinstance(v, types[k]) or isinstance(v, bool):
             raise HTTPException(400, f'{k}: wrong type')
     if 'retention_days' in patch and not 1 <= patch['retention_days'] <= 365:
         raise HTTPException(400, 'retention_days must be 1-365')

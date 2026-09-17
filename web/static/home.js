@@ -170,11 +170,8 @@ end`;
     };
     $('#wl-copy').onclick = e => copyText($('#wl-cli').textContent, e.target);
     $('#wl-copy2').onclick = e => copyText($('#wl-cli2').textContent, e.target);
-    api('/api/settings').then(st => {
-      const url = (st.community || {}).url;
-      $('#wl-contact').innerHTML = contactFormH('cf-welcome', url);
-      bindContactForm('cf-welcome', url, 'welcome');
-    }).catch(() => {});
+    $('#wl-contact').innerHTML = contactFormH('cf-welcome');
+    bindContactForm('cf-welcome', 'welcome');
     await draw();
     S.welcomeTimer = setInterval(() => draw().catch(() => {}), 3000);
   },

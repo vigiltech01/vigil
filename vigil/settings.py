@@ -36,8 +36,6 @@ DEFAULTS = {
     'retention_days': int(os.environ.get('VIGIL_RETENTION_DAYS', '30')),
     # the timezone offset of the FortiGate clock, used only for backup file-name timestamps
     'device_tz_hours': 0,
-    # anonymous daily usage ping to the Vigil team (see vigil/community.py); VIGIL_TELEMETRY=off overrides
-    'telemetry': True,
 }
 
 _lock = threading.Lock()

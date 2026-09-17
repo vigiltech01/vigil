@@ -162,7 +162,7 @@ PAGES.settings = {
       allowlist: () => ({domain_allowlist: $('#a-dom').value.split(/[\n,\s]+/).map(x => x.trim()).filter(Boolean)}),
     };
     document.querySelectorAll('[data-save]').forEach(b => b.onclick = () => saveSection(b.dataset.save, patches[b.dataset.save]));
-    bindCommunitySection(d);
+    bindContactForm('cf-settings', 'settings');
     $('#p-save').onclick = async () => {
       const msg = $('#msg-account');
       try {

@@ -187,8 +187,7 @@ countries.
 - **One container**: syslog receiver, processing and web UI, with automatic restarts and a Docker health check.
 - **Light**: tens of log lines per second in a few hundred MB of RAM. Memory guards, query time budgets and
   pre-computed 24-hour, 7-day and 30-day views keep large searches from hurting the host.
-- **Private**: your logs never leave the host; hashed credentials, sanitised configuration storage. The only outbound
-  request is an anonymous daily usage ping you can switch off.
+- **Private**: no telemetry, no outbound connections, hashed credentials, sanitised configuration storage.
 - **Multi-arch**: images for amd64 and arm64.
 
 ## Try it now

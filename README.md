@@ -146,7 +146,6 @@ Copy `.env.example` to `.env` to change defaults — everything is optional:
 | `VIGIL_RETENTION_DAYS` | `30` | Days of detailed log rows to keep |
 | `VIGIL_MEM_LIMIT` | `4g` | Container memory limit |
 | `VIGIL_DEMO` | `0` | `1` = fictional demo traffic |
-| `VIGIL_TELEMETRY` | `on` | `off` = never send the anonymous daily usage ping |
 | `VIGIL_ADMIN_USER` / `VIGIL_ADMIN_PASSWORD` | — | Create the admin account automatically instead of the first-run page |
 
 Everything Vigil stores lives in the `vigil-data` Docker volume. See [docs/INSTALL.md](docs/INSTALL.md) for HTTPS behind a
@@ -155,9 +154,7 @@ reverse proxy, backups, upgrades and uninstalling.
 ## Security and privacy
 
 - Vigil never connects to the FortiGate and your logs, configuration and investigations never leave the host.
-- The only outbound request is an **anonymous daily usage ping** (random install ID, version, CPU architecture,
-  demo/login/config flags, number of firewalls, a coarse log-rate bucket). You can see exactly what is sent in
-  *Settings → Community*, and turn it off there or with `VIGIL_TELEMETRY=off`.
+- No telemetry: Vigil makes no outbound connections of its own.
 - Configuration backups are stripped of passwords, keys, certificates and all `ENC` values before they are stored.
 - The administrator password is stored as a salted PBKDF2-SHA256 hash; sessions use signed, HttpOnly cookies; repeated
   failed logins are rate limited.
@@ -189,7 +186,8 @@ the live 3D FortiGate dashboard.
 - 🤝 **Crowdfunding:** we are open to it. [Sponsor Vigil on GitHub](https://github.com/sponsors/vigiltech01).
 - 🏢 **Organisations, MSPs and partners:** tell us what you need.
 
-**[→ Contact us](https://vigiltech01.github.io/vigil/contact)** (the form is also inside the app under *Settings → Community & investors*).
+**[→ Contact us](https://vigiltech01.github.io/vigil/contact)** or email **[mrkk62396@gmail.com](mailto:mrkk62396@gmail.com)**
+(the form is also inside the app under *Settings → Community & investors*).
 
 ## Contributing
 
