@@ -15,6 +15,9 @@ plain-English investigations. It is one Docker container, and the integration is
 git clone https://github.com/vigiltech01/vigil.git && cd vigil && docker compose up -d
 ```
 
+Needs Docker with the Compose v2 plugin. On a fresh machine run `curl -fsSL https://get.docker.com | sudo sh` first
+(or on Ubuntu: `sudo apt install -y docker.io docker-compose-v2`) - see [Install Docker](INSTALL.md#install-docker).
+
 Open `http://<host>:8080`, create the admin account and paste the syslog settings into the FortiGate CLI:
 
 ```

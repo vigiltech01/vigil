@@ -76,6 +76,20 @@ why was this user blocked?* Vigil turns millions of raw lines into those answers
 **Requirements:** any Linux machine (or VM) with [Docker](https://docs.docker.com/engine/install/). 2 CPUs, 2 GB RAM and
 20 GB of disk are plenty for a typical firewall. The FortiGate must be able to reach it on UDP or TCP port 514.
 
+**No Docker yet?** Install Docker Engine with the Compose v2 plugin first (`docker compose version` must work):
+
+```bash
+curl -fsSL https://get.docker.com | sudo sh              # any distro, official packages
+# or, on Ubuntu 22.04/24.04 with Ubuntu's own packages:
+# sudo apt update && sudo apt install -y docker.io docker-compose-v2
+sudo usermod -aG docker "$USER" && newgrp docker         # optional: run docker without sudo
+```
+
+(On Ubuntu's packages the plugin is `docker-compose-v2`; `docker-compose-plugin` only exists in Docker's repository.
+Details and alternatives: [Install Docker](docs/INSTALL.md#install-docker).)
+
+Then install Vigil:
+
 ```bash
 git clone https://github.com/vigiltech01/vigil.git
 cd vigil

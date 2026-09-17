@@ -7,7 +7,7 @@
 | CPU | 1 vCPU | 2–4 vCPU |
 | Memory | 1 GB | 2–4 GB |
 | Disk | 10 GB | 20 GB + ~1 GB per million log lines per day of retention (see below) |
-| Software | Docker Engine 20.10+ with the Compose plugin | |
+| Software | Docker Engine 20.10+ with the Compose v2 plugin ([how to install](#install-docker)) | |
 | Network | FortiGate → Vigil on UDP or TCP 514; your browser → Vigil on TCP 8080 | |
 
 Vigil runs on any 64-bit Linux host (x86-64 or ARM64), in a VM, or on Docker Desktop / WSL 2 for evaluation.
@@ -15,6 +15,51 @@ Vigil runs on any 64-bit Linux host (x86-64 or ARM64), in a VM, or on Docker Des
 **Disk planning.** Vigil keeps the raw syslog files (rotated and compressed) and a database. As a rule of thumb, a firewall
 producing 1 million log lines per day needs about 1 GB per day of detailed retention. Internet scanner noise is stored only
 as counts, which keeps busy perimeter firewalls affordable.
+
+## Install Docker
+
+Vigil needs **Docker Engine and the Compose v2 plugin** (the `docker compose` command, with a space). Check first:
+
+```bash
+docker compose version
+```
+
+If that prints `Docker Compose version v2…` or newer, skip to [Install](#install). Otherwise pick **one** of the options
+below - do not mix packages from different sources.
+
+### Option A - Docker's official packages (recommended, all major distributions)
+
+```bash
+curl -fsSL https://get.docker.com | sudo sh
+```
+
+This adds Docker's repository and installs `docker-ce` together with `docker-compose-plugin`. It works on Ubuntu, Debian,
+RHEL, Rocky, Alma, Fedora and Raspberry Pi OS. If you prefer to add the repository by hand, follow
+[docs.docker.com/engine/install](https://docs.docker.com/engine/install/).
+
+### Option B - Ubuntu's own packages (Ubuntu 22.04 / 24.04)
+
+```bash
+sudo apt update
+sudo apt install -y docker.io docker-compose-v2
+```
+
+On Ubuntu's packages the Compose plugin is called **`docker-compose-v2`**. The name `docker-compose-plugin` only exists in
+Docker's repository (Option A), so `apt install docker-compose-plugin` fails with *"has no installation candidate"* on a
+stock Ubuntu. If you already installed `docker.io`, just add `docker-compose-v2`.
+
+### After installing
+
+```bash
+sudo systemctl enable --now docker       # start Docker now and at every boot
+sudo usermod -aG docker "$USER"          # run docker without sudo...
+newgrp docker                            # ...in this shell (or log out and back in)
+docker compose version                   # must print a version
+docker run --rm hello-world              # optional end-to-end test
+```
+
+Membership of the `docker` group is equivalent to root on that host. If you would rather not grant it, skip the
+`usermod` line and prefix the Vigil commands with `sudo` (`sudo docker compose up -d`).
 
 ## Install
 

@@ -2,6 +2,18 @@
 
 Start with **Health** in the Vigil menu and the **Connect a FortiGate** checklist - they show exactly which step is missing.
 
+## Docker errors during install
+
+| Message | Cause | Fix |
+|---|---|---|
+| `Command 'docker' not found` | Docker is not installed | [Install Docker](INSTALL.md#install-docker) |
+| `unknown shorthand flag: 'd' in -d` | Docker is installed but the **Compose v2 plugin** is missing, so `docker compose` is not a command | Ubuntu packages: `sudo apt install -y docker-compose-v2`. Docker's packages: `sudo apt install -y docker-compose-plugin` |
+| `Package 'docker-compose-plugin' has no installation candidate` | That package only exists in Docker's repository; a stock Ubuntu calls it `docker-compose-v2` | `sudo apt install -y docker-compose-v2`, or switch to Docker's packages with `curl -fsSL https://get.docker.com \| sudo sh` |
+| `permission denied while trying to connect to the Docker daemon socket` | Your user is not in the `docker` group | `sudo usermod -aG docker "$USER"` then log out and back in (or `newgrp docker`), or prefix commands with `sudo` |
+| `Cannot connect to the Docker daemon ... Is the docker daemon running?` | The service is stopped | `sudo systemctl enable --now docker` |
+| `docker-compose: command not found` | Old guides use the v1 `docker-compose` (hyphen) command | Vigil uses `docker compose` (space) - install the v2 plugin as above |
+| `cd: vigil: No such file or directory` after cloning | You are already inside the cloned `vigil` folder (it also contains a `vigil/` code folder) | Run `docker compose up -d` in the folder that contains `docker-compose.yml` |
+
 ## No logs arrive ("Waiting for logs")
 
 1. **Is syslog reaching the host?**
