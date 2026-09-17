@@ -21,6 +21,8 @@ jobs:
           cache: pip
       - run: pip install -r requirements-dev.txt
       - run: python -m pytest -q -W ignore::DeprecationWarning
+      - name: Installer syntax and dry run
+        run: bash -n install.sh && ./install.sh --dry-run --yes --scan-dir "$RUNNER_TEMP"
 
   docker:
     needs: test

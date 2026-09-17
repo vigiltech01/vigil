@@ -401,10 +401,26 @@ def _read_status(name):
         return None
 
 
+def _input_status():
+    """How logs reach Vigil: the built-in receiver, or an existing syslog file on the host (read-only mount)."""
+    if settings.INPUT != 'file':
+        return {'mode': 'receiver'}
+    d = {'mode': 'file', 'file': settings.HOST_LOG_FILE, 'exists': False, 'readable': False,
+         'host_port': int(os.environ.get('VIGIL_HOST_SYSLOG_PORT') or 514)}
+    try:
+        st = os.stat(settings.LOG_BASE)
+        d.update(exists=True, readable=os.access(settings.LOG_BASE, os.R_OK), bytes=st.st_size,
+                 mtime=int(st.st_mtime * 1000), age_s=round(time.time() - st.st_mtime, 1))
+    except OSError:
+        pass
+    return d
+
+
 @app.get('/api/settings')
 def get_settings():
     a = auth.account() or {}
     return {'settings': settings.load(), 'config': _config_info(), 'receiver': _read_status('receiver.json'),
+            'input': _input_status(),
             'account': {'user': a.get('user'), 'changed': a.get('changed')}, 'demo': settings.DEMO, 'version': __version__,
             'syslog_port': int(os.environ.get('VIGIL_SYSLOG_PUBLISHED_PORT', '514'))}
 
@@ -502,7 +518,8 @@ def health():
         files = [{'path': os.path.basename(p), 'bytes': os.path.getsize(p), 'mtime': int(os.path.getmtime(p) * 1000)}
                  for p in sorted(names) if os.path.exists(p)]
     d['log_files'] = files
-    d['receiver'] = _read_status('receiver.json')
+    d['receiver'] = _read_status('receiver.json') if settings.INPUT == 'receiver' else None
+    d['input'] = _input_status()
     d['supervisor'] = _read_status('supervisor.json')
     mem = {}
     try:

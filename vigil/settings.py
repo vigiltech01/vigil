@@ -2,6 +2,7 @@
 
     /data/vigil.db               SQLite database (logs, rollups, change history)
     /data/logs/fortigate.log     raw syslog written by the built-in receiver (rotated + gzipped)
+    /host-logs/<file>            file input: the host's existing syslog file, mounted read-only (never modified)
     /data/config/fortigate.yaml  uploaded configuration backup, secrets removed (optional)
     /data/settings.json          settings edited in the UI
     /data/auth.json              admin account (password hash), created by the first-run setup
@@ -14,12 +15,28 @@ import time
 APP_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 DATA = os.environ.get('VIGIL_DATA', '/data')
 DB_PATH = os.environ.get('VIGIL_DB', os.path.join(DATA, 'vigil.db'))
-LOG_DIR = os.environ.get('VIGIL_LOG_DIR', os.path.join(DATA, 'logs'))
-LOG_BASE = os.environ.get('VIGIL_LOG', os.path.join(LOG_DIR, 'fortigate.log'))
+DEMO = os.environ.get('VIGIL_DEMO', '0') == '1'
+# Where FortiGate logs come from:
+#   receiver  the built-in syslog receiver (UDP/TCP 5514 in the container) writes /data/logs/fortigate.log
+#   file      the host already runs a syslog server that receives the FortiGate (port 514 is taken) and writes a file;
+#             Vigil reads that file and its .1 / .2.gz rotations read-only from the /host-logs mount, never writing to it
+INPUT = os.environ.get('VIGIL_INPUT', 'receiver').strip().lower()
+if INPUT not in ('receiver', 'file') or DEMO:            # demo traffic is sent to the built-in receiver
+    INPUT = 'receiver'
+if INPUT == 'file':
+    LOG_DIR = os.environ.get('VIGIL_HOST_LOG_MOUNT', '/host-logs')
+    LOG_BASE = os.path.join(LOG_DIR, os.environ.get('VIGIL_LOG_NAME') or 'syslog')
+    HOST_LOG_FILE = os.environ.get('VIGIL_HOST_LOG_FILE') or LOG_BASE      # path as seen on the host (display only)
+else:
+    LOG_DIR = os.environ.get('VIGIL_LOG_DIR', os.path.join(DATA, 'logs'))
+    LOG_BASE = os.environ.get('VIGIL_LOG', os.path.join(LOG_DIR, 'fortigate.log'))
+    HOST_LOG_FILE = None
+# First start: rotated files last modified more than this many days ago are skipped (a busy host keeps weeks of
+# syslog on disk). 0 = read everything. Default: 1 day for an existing host file, everything for the receiver.
+BACKFILL_DAYS = float(os.environ.get('VIGIL_BACKFILL_DAYS') or ('1' if INPUT == 'file' else '0'))
 CONFIG_PATH = os.environ.get('VIGIL_CONFIG', os.path.join(DATA, 'config', 'fortigate.yaml'))
 SETTINGS_PATH = os.path.join(DATA, 'settings.json')
 AUTH_PATH = os.path.join(DATA, 'auth.json')
-DEMO = os.environ.get('VIGIL_DEMO', '0') == '1'
 
 DEFAULTS = {
     # shown in the UI; learned from the logs when empty
@@ -83,5 +100,5 @@ def save(patch):
 
 
 def ensure_dirs():
-    for d in (DATA, LOG_DIR, os.path.dirname(CONFIG_PATH), os.path.dirname(DB_PATH)):
+    for d in (DATA, os.path.dirname(CONFIG_PATH), os.path.dirname(DB_PATH)) + ((LOG_DIR,) if INPUT == 'receiver' else ()):
         os.makedirs(d, exist_ok=True)

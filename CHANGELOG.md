@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Works next to an existing syslog server.** New `install.sh` checks Docker and port 514 before starting. When the host
+  already receives the FortiGate with rsyslog/syslog-ng (port 514 taken), Vigil reads that log file and its rotations
+  read-only (`VIGIL_INPUT=file`) instead of failing with "address already in use"; the syslog server and the FortiGate are
+  left unchanged. Health, Settings and the Connect checklist show the file source.
+- Ingest follows `copytruncate` log rotation; `VIGIL_BACKFILL_DAYS` limits how much old rotated syslog is read on first start.
+- Docs: installing Docker with the Compose v2 plugin, and a troubleshooting table for common Docker install errors.
+
 - Community & investors: contact form in the app (Settings, Welcome page) and on the website, delivered by email to the team.
 - GitHub Sponsors button and daily repository statistics workflow.
 

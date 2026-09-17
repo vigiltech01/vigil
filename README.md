@@ -43,7 +43,7 @@ firewall's decision:
 
 | Step | What you do | Time |
 |---|---|---|
-| **1** | `git clone https://github.com/vigiltech01/vigil.git && cd vigil && docker compose up -d` | ~30 s |
+| **1** | `git clone https://github.com/vigiltech01/vigil.git && cd vigil && ./install.sh` | ~30 s |
 | **2** | Open `http://<host>:8080`, create the admin account | ~10 s |
 | **3** | Paste one CLI block into the FortiGate (shown on screen with a Copy button) | ~20 s |
 
@@ -93,8 +93,13 @@ Then install Vigil:
 ```bash
 git clone https://github.com/vigiltech01/vigil.git
 cd vigil
-docker compose up -d
+./install.sh
 ```
+
+`install.sh` checks Docker and port 514 first. **If this machine already receives the FortiGate with its own syslog server**
+(rsyslog, syslog-ng - the firewall was integrated before Vigil), it does not fight over the port: Vigil reads the existing log
+file read-only and nothing changes on the FortiGate or the syslog server. On a clean machine it starts the built-in receiver on
+514. (`docker compose up -d` alone also works when port 514 is free.)
 
 Open **http://&lt;this-machine&gt;:8080**, create the administrator account, and follow the on-screen
 **Connect your FortiGate** checklist. On the firewall it comes down to:

@@ -1,6 +1,9 @@
 # Vigil - FortiGate log intelligence
-#   docker compose up -d          then open http://<this-host>:8080
+#   ./install.sh                  recommended: checks Docker, port 514 and an existing syslog server, then starts Vigil
+#   docker compose up -d          or start directly, then open http://<this-host>:8080
 # Point the FortiGate's syslog at this host, UDP (or TCP) port 514. Settings: copy .env.example to .env.
+# If this host already receives the FortiGate on 514 (rsyslog, syslog-ng...), Vigil reads that syslog file instead:
+# VIGIL_INPUT=file - install.sh detects and configures this.
 services:
   vigil:
     image: ghcr.io/vigiltech01/vigil:${VIGIL_VERSION:-latest}
@@ -18,8 +21,18 @@ services:
       VIGIL_SYSLOG_PUBLISHED_PORT: "${VIGIL_SYSLOG_PORT:-514}"
       VIGIL_ADMIN_USER: "${VIGIL_ADMIN_USER:-}"
       VIGIL_ADMIN_PASSWORD: "${VIGIL_ADMIN_PASSWORD:-}"
+      # log source: "receiver" (built-in, default) or "file" (existing syslog file on this host, read-only)
+      VIGIL_INPUT: "${VIGIL_INPUT:-receiver}"
+      VIGIL_LOG_NAME: "${VIGIL_LOG_NAME:-syslog}"
+      VIGIL_HOST_LOG_FILE: "${VIGIL_HOST_LOG_DIR:-}/${VIGIL_LOG_NAME:-syslog}"
+      VIGIL_HOST_SYSLOG_PORT: "${VIGIL_HOST_SYSLOG_PORT:-514}"
+      VIGIL_BACKFILL_DAYS: "${VIGIL_BACKFILL_DAYS:-}"
+    # file input: the log file's group (adm = 4 on Debian/Ubuntu) so the unprivileged container user can read it
+    group_add:
+      - "${VIGIL_HOST_LOG_GID:-4}"
     volumes:
       - vigil-data:/data
+      - "${VIGIL_HOST_LOG_DIR:-./docker/no-host-logs}:/host-logs:ro"
     mem_limit: "${VIGIL_MEM_LIMIT:-4g}"
     logging:
       driver: json-file

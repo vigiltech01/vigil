@@ -43,16 +43,19 @@ PAGES.settings = {
       <div class="set-body" id="set-body">${SKEL}</div></div>`,
   async load() {
     const d = await api('/api/settings');
-    const s = d.settings, c = d.config, rc = d.receiver || {};
+    const s = d.settings, c = d.config, rc = d.receiver || {}, inp = d.input || {mode: 'receiver'};
     const meta = S.meta || {};
     const fw = meta.firewall || {};
     $('#set-body').innerHTML = `
       <section class="set-sec" id="set-connection"><h3>Connection</h3><p>Where your FortiGate sends its logs, and what Vigil is receiving right now.</p>
         <dl class="kv-list">
+          ${inp.mode === 'file' ? `<dt>Log source</dt><dd><span class="pill good">existing syslog server</span> the host already receives syslog on port ${esc(inp.host_port)}; Vigil reads its file read-only</dd>
+          <dt>File</dt><dd><span class="mono">${esc(inp.file)}</span> ${!inp.exists ? '<span class="pill bad">not found</span>' : !inp.readable ? '<span class="pill bad">not readable</span>' : `<span class="muted">${fmtB(inp.bytes)} · written ${ago(inp.mtime)} ago</span>`}</dd>
+          <dt>Change it</dt><dd class="muted">VIGIL_INPUT, VIGIL_HOST_LOG_DIR and VIGIL_LOG_NAME in .env (or run ./install.sh again)</dd>` : `
           <dt>Syslog port</dt><dd><span class="mono">${esc(d.syslog_port)}</span> UDP and TCP on this machine</dd>
           <dt>Receiver</dt><dd>${rc.started ? `<span class="pill good">● listening</span> ${fmtN(rc.messages)} messages · ${rc.rate_per_s} msg/s` : '<span class="pill bad">not running</span>'}</dd>
           <dt>Allowed senders</dt><dd>${esc((rc.allow || ['any']).join(', '))} <span class="muted">(set VIGIL_SYSLOG_ALLOW in .env)</span></dd>
-          <dt>Senders seen</dt><dd>${(rc.senders || []).map(x => `<span class="tag mono">${esc(x.ip)} · ${fmtK(x.messages)}</span>`).join('') || '<span class="muted">none yet</span>'}</dd>
+          <dt>Senders seen</dt><dd>${(rc.senders || []).map(x => `<span class="tag mono">${esc(x.ip)} · ${fmtK(x.messages)}</span>`).join('') || '<span class="muted">none yet</span>'}</dd>`}
           <dt>Firewall detected</dt><dd>${meta.last_event_ts ? `${esc(fw.name || '?')}${fw.version ? ' · FortiOS ' + esc(fw.version) : ''}${fw.serial ? ` · <span class="mono">${esc(fw.serial)}</span>` : ''}` : '<span class="muted">no FortiGate logs yet</span>'}</dd>
         </dl>
         <div class="save-row"><a class="btn-primary" style="padding:7px 16px;border-radius:999px" href="#welcome">Show FortiGate setup commands</a></div></section>

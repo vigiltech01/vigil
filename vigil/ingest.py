@@ -506,7 +506,11 @@ def ingest_file(con, ing, path, fid, off, follow, batch, on_idle=lambda: None):
                 lines, idx, last_commit = 0, [], time.time()
             on_idle()
             try:
-                moved = os.stat(path).st_ino != ino
+                st = os.stat(path)
+                moved = st.st_ino != ino
+                if not moved and st.st_size < off:             # rotated with copytruncate: same file, emptied
+                    log.info('%s: truncated in place (copytruncate rotation), starting again from the top', path)
+                    break
             except FileNotFoundError:
                 moved = True
             if moved:
@@ -585,6 +589,11 @@ def run(follow):
                 continue
             fid, off, done = reg
             live = path == LOG_BASE
+            if (not live and not done and off == 0 and settings.BACKFILL_DAYS > 0
+                    and os.path.getmtime(path) < time.time() - settings.BACKFILL_DAYS * 86400):
+                con.execute('UPDATE files SET done=1 WHERE fid=?', (fid,))     # older than the first-start window
+                log.info('%s: skipped (last written more than %g days ago, VIGIL_BACKFILL_DAYS)', path, settings.BACKFILL_DAYS)
+                continue
             if done or (not live and not path.endswith('.gz') and off >= os.path.getsize(path)):
                 if not live and not done:
                     con.execute('UPDATE files SET done=1 WHERE fid=?', (fid,))

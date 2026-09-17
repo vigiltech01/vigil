@@ -69,7 +69,13 @@ def supervise():
     from . import auth, db
     auth.bootstrap_from_env()
     db.connect().close()                                  # create / migrate the schema once, before the readers start
-    names = COMPONENTS + (['demo'] if settings.DEMO else [])
+    names = [n for n in COMPONENTS if not (n == 'receiver' and settings.INPUT == 'file')] + (['demo'] if settings.DEMO else [])
+    if settings.INPUT == 'file':
+        log.info('input: reading the host syslog file %s (mounted read-only as %s); built-in receiver not started',
+                 settings.HOST_LOG_FILE, settings.LOG_BASE)
+        if not os.access(settings.LOG_BASE, os.R_OK):
+            log.warning('cannot read %s yet - check VIGIL_HOST_LOG_DIR / VIGIL_LOG_NAME and the file permissions '
+                        '(see docs/INSTALL.md, "Existing syslog server")', settings.LOG_BASE)
     procs = {n: {'proc': None, 'restarts': 0, 'started': None, 'next': 0.0, 'backoff': 1.0} for n in names}
     stopping = []
 

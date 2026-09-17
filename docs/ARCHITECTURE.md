@@ -17,7 +17,7 @@ One container runs four small processes under a supervisor that restarts any of 
 
 | Component | Role |
 |---|---|
-| **receiver** (`vigil/syslogd.py`) | Accepts syslog on UDP and TCP (newline or octet-counted framing), writes `fortigate.log`, rotates by size and day, compresses old files. |
+| **receiver** (`vigil/syslogd.py`) | Accepts syslog on UDP and TCP (newline or octet-counted framing), writes `fortigate.log`, rotates by size and day, compresses old files. Not started with `VIGIL_INPUT=file`: then the ingest follows the host's existing syslog file (mounted read-only at `/host-logs`) instead. |
 | **ingest** (`vigil/ingest.py`) | Follows the log files exactly once (file identity by content hash, offsets committed with the data), parses both FortiOS formats and writes rows and rollups. |
 | **web** (`vigil/web.py`) | FastAPI JSON API + the single-page UI. Authentication, settings, configuration upload, health. |
 | **demo** (`vigil/demo.py`) | Only with `VIGIL_DEMO=1`: a fictional firewall sending realistic syslog to the receiver. |

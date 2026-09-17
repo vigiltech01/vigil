@@ -107,7 +107,7 @@ PAGES.welcome = {
         <p>Vigil listens for FortiGate syslog and turns it into live threat views, rule risk scores and one-click investigations.
         Point the firewall at this machine - nothing is installed on the FortiGate and your logs never leave this machine.</p></section>
       <section class="card"><header><h3>1 · Send syslog to Vigil</h3><span class="sub">Paste into the FortiGate CLI (System → CLI console, or SSH). Replace the address if this machine is reached through a different one.</span></header>
-        <div class="body"><div class="copyable"><pre class="cli" id="wl-cli"></pre><button id="wl-copy">Copy</button></div>
+        <div class="body"><div id="wl-mode"></div><div class="copyable"><pre class="cli" id="wl-cli"></pre><button id="wl-copy">Copy</button></div>
         <div class="note" style="margin-top:12px">Both FortiOS log formats work (<span class="mono">default</span> and <span class="mono">cef</span>). For TCP instead of UDP add
           <span class="mono">set mode reliable</span>. Several FortiGates can send to the same Vigil - use <span class="mono">syslogd2</span> … <span class="mono">syslogd4</span> if the first slot is taken.</div></div></section>
       <section class="card"><header><h3>Live checklist</h3><span class="sub">Updates automatically every few seconds</span></header>
@@ -137,7 +137,13 @@ end</pre><button id="wl-copy2">Copy</button></div></div></section>
     const draw = async () => {
       if (S.page !== 'welcome') { clearInterval(S.welcomeTimer); return; }
       const [st, meta] = await Promise.all([api('/api/settings'), api('/api/meta')]);
-      const port = st.syslog_port || 514;
+      const inp = st.input || {mode: 'receiver'};
+      const fileMode = inp.mode === 'file';
+      const port = fileMode ? (inp.host_port || 514) : (st.syslog_port || 514);
+      const modeH = fileMode ? `<div class="note" style="margin:0 0 12px">This machine already runs a syslog server on port ${port}, and Vigil reads the file it
+          writes (<span class="mono">${esc(inp.file || '')}</span>, read-only). <b>If your FortiGate already sends syslog here, change nothing</b> -
+          the commands below are only for a firewall that is not sending yet.</div>` : '';
+      if ($('#wl-mode').innerHTML !== modeH) $('#wl-mode').innerHTML = modeH;
       const cli = `config log syslogd setting
     set status enable
     set server "${host}"
@@ -153,7 +159,16 @@ end`;
       if ($('#wl-cli').textContent !== cli) $('#wl-cli').textContent = cli;
       const rc = st.receiver || {};
       const senders = rc.senders || [];
-      const steps = [
+      const fresh = inp.age_s != null && inp.age_s < 300;
+      const steps = fileMode ? [
+        [true, 'Vigil is running', `Web UI up, account “${st.account.user || 'local'}” ready`],
+        [inp.exists && inp.readable, 'Reading the existing syslog file', !inp.exists
+          ? `${inp.file} was not found - check VIGIL_HOST_LOG_DIR and VIGIL_LOG_NAME in .env, then docker compose up -d`
+          : inp.readable ? `${inp.file} on this machine, read-only` : `${inp.file} exists but Vigil is not allowed to read it - see the install guide, “Existing syslog server”`],
+        [inp.readable && fresh, 'Log file is growing', inp.age_s != null ? `last written ${ago(inp.mtime)} ago` : 'waiting for the file'],
+        [!!meta.last_event_ts, 'FortiGate logs recognised', meta.last_event_ts ? `newest log ${ago(meta.last_event_ts)} ago from ${(meta.firewall || {}).name || 'your FortiGate'}` : fresh ? 'the file is growing but no FortiGate lines yet - is the firewall sending to this machine?' : 'after the file receives FortiGate logs'],
+        [!!st.config.loaded, 'Configuration backup (optional)', st.config.loaded ? `${st.config.policies} policies from ${st.config.file}` : 'not uploaded - rule grading is off'],
+      ] : [
         [true, 'Vigil is running', `Web UI up, account “${st.account.user || 'local'}” ready`],
         [!!rc.started, 'Syslog receiver listening', rc.started ? `UDP and TCP port ${port} on this machine` : 'starting…'],
         [senders.length > 0, 'Syslog arriving', senders.length ? `${fmtN(rc.messages)} messages from ${senders.map(s => s.ip).slice(0, 3).join(', ')}` : 'waiting for the first message - check the commands and any firewall between the FortiGate and this machine'],

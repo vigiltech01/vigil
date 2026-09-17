@@ -653,7 +653,7 @@ PAGES.health = {
   layout: () => `<div class="tiles" id="h-tiles"></div>
     ${card('h-day', 'Log lines per day', {w: 'w8', chart: 'short'})}
     ${card('h-svc', 'Components', {w: 'w4', sub: 'Processes inside the Vigil container (restarted automatically)'})}
-    ${card('h-snd', 'Syslog senders', {w: 'w6', sub: 'Devices sending to the built-in receiver since it started'})}
+    ${card('h-snd', 'Syslog senders', {w: 'w6', sub: 'Devices sending to the built-in receiver since it started (not tracked when reading a host syslog file)'})}
     ${card('h-tab', 'Raw tables', {w: 'w6'})}
     ${card('h-roll', 'Summaries', {w: 'w6'})}
     ${card('h-files', 'Ingested files', {w: 'w6'})}
@@ -664,18 +664,21 @@ PAGES.health = {
     const disk = d.disk || {};
     const mem = d.mem || {};
     const rc = d.receiver || {};
+    const inp = d.input || {mode: 'receiver'};
     const memLimit = mem.cgroup_max, memUsed = mem.cgroup_current;
     $('#h-tiles').innerHTML = [
       ['Events / s', fmtN(d.eps_5m), 'average, last 6 minutes'],
       ['Newest log', d.last_event_ts ? (lag < 90 ? Math.round(lag) + ' s ago' : ago(d.last_event_ts) + ' ago') : '—', d.last_event_ts ? fmtT(d.last_event_ts) : 'nothing received yet', lag > 120 || !d.last_event_ts ? 'crit' : 'good'],
-      ['Receiver', fmtK(rc.messages || 0), rc.rate_per_s != null ? `${rc.rate_per_s} msg/s · port ${rc.port}` : 'not running', rc.messages ? 'good' : 'warn'],
+      inp.mode === 'file'
+        ? ['Syslog file', inp.exists ? fmtB(inp.bytes) : 'missing', inp.exists ? `${inp.file} · ${inp.readable ? `written ${ago(inp.mtime)} ago` : 'NOT readable'}` : `${inp.file} not found`, inp.readable && inp.age_s < 300 ? 'good' : 'crit']
+        : ['Receiver', fmtK(rc.messages || 0), rc.rate_per_s != null ? `${rc.rate_per_s} msg/s · port ${rc.port}` : 'not running', rc.messages ? 'good' : 'warn'],
       ['Database', fmtB(d.db_bytes), `last write ${d.last_commit ? Math.round(commit) + ' s ago' : '—'}`, commit > 120 && d.last_commit ? 'warn' : ''],
       ['Disk free', fmtB(disk.free), disk.total ? Math.round(100 * disk.used / disk.total) + '% of the data volume used' : '', disk.free < 5 * 2 ** 30 ? 'warn' : ''],
       ['Memory', memUsed ? fmtB(memUsed) : fmtB(mem.MemAvailable), memUsed ? (memLimit ? 'of ' + fmtB(memLimit) + ' container limit' : 'container usage') : 'available on host', memLimit && memUsed > .85 * memLimit ? 'warn' : ''],
     ].map(([k, v, s, cls]) => `<div class="tile ${cls || ''}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${esc(s)}</div></div>`).join('');
     const comps = ((d.supervisor || {}).components) || {};
     table('h-snd', [{k: 'ip', t: 'Sender', mono: true}, {k: 'messages', t: 'Messages', num: true}, {k: 'last_ts', t: 'Last message', f: v => v ? ago(v) + ' ago' : ''}],
-      rc.senders || [], {empty: 'No syslog received yet. See Connect a FortiGate.'});
+      rc.senders || [], {empty: inp.mode === 'file' ? 'Logs are read from the host syslog file - the syslog server on this machine receives the senders.' : 'No syslog received yet. See Connect a FortiGate.'});
     chart('h-day-c', Object.assign(base({frm: d.now - 35 * 864e5, to: d.now}), {
       tooltip: Object.assign(base().tooltip, {formatter: ps => `<b>${fmtT(ps[0].value[0]).slice(0, 10)}</b><br>` + ps.map(p => `${p.marker} ${esc(p.seriesName)} <b>${fmtN(p.value[1])}</b>`).join('<br>')}),
       series: [barSeries('scanner / policy denies', d.per_day.map(r => [r.day, r.noise]), C.s[1], 'x'),

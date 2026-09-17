@@ -12,8 +12,11 @@ plain-English investigations. It is one Docker container, and the integration is
 ## Install in one minute
 
 ```bash
-git clone https://github.com/vigiltech01/vigil.git && cd vigil && docker compose up -d
+git clone https://github.com/vigiltech01/vigil.git && cd vigil && ./install.sh
 ```
+
+Already sending the FortiGate to this machine's own syslog server on port 514? The installer detects it and Vigil reads that log
+file read-only - no change on the firewall.
 
 Needs Docker with the Compose v2 plugin. On a fresh machine run `curl -fsSL https://get.docker.com | sudo sh` first
 (or on Ubuntu: `sudo apt install -y docker.io docker-compose-v2`) - see [Install Docker](INSTALL.md#install-docker).

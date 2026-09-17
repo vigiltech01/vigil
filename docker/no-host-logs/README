@@ -1,0 +1,1 @@
+Placeholder mounted at /host-logs when Vigil uses its built-in syslog receiver (VIGIL_INPUT=receiver).

@@ -66,6 +66,25 @@ Membership of the `docker` group is equivalent to root on that host. If you woul
 ```bash
 git clone https://github.com/vigiltech01/vigil.git
 cd vigil
+./install.sh
+```
+
+`install.sh` checks Docker and the Compose plugin, then decides how the FortiGate logs reach Vigil **before** anything binds a
+port:
+
+| What it finds on this machine | What it configures |
+|---|---|
+| Port 514 is free | Vigil's built-in syslog receiver on 514 (`VIGIL_INPUT=receiver`) |
+| Port 514 is taken by a syslog server (rsyslog, syslog-ng…) **and FortiGate logs are being written to a file** | Vigil reads that file read-only; the syslog server and the FortiGate are not touched (`VIGIL_INPUT=file`) - see [Existing syslog server](#existing-syslog-server-port-514-in-use) |
+| Port 514 is taken, no FortiGate logs found | The built-in receiver on a free port (5514); the FortiGate then needs `set port 5514` |
+
+It writes the result to `.env`, runs `docker compose up -d` and waits until Vigil is healthy. Useful options:
+`--dry-run` (only show what it would configure), `--yes` (no questions), `--log-file /path/to/file` (skip detection),
+`--receiver` (always use the built-in receiver), `--port N` (the FortiGate sends to a port other than 514).
+
+**Manual install** (same result on a machine where port 514 is free):
+
+```bash
 cp .env.example .env        # optional: ports, retention, allowed senders
 docker compose up -d
 ```
@@ -88,15 +107,43 @@ sudo ufw allow from 192.0.2.0/24 to any port 8080 proto tcp  # admin workstation
 Note that Docker's published ports bypass `ufw` on many distributions. Restrict senders inside Vigil as well with
 `VIGIL_SYSLOG_ALLOW=192.0.2.1` in `.env`.
 
-### Port 514 already in use
+### Existing syslog server (port 514 in use)
 
-If the host runs its own syslog daemon on 514, either stop it or pick another port:
+A common setup: the FortiGate was integrated with this machine first - it already sends syslog to rsyslog or syslog-ng on
+port 514, which writes a file such as `/var/log/syslog` or `/var/log/remote/fortigate.log`. Starting Vigil's receiver on
+the same port fails with *"failed to bind host port 0.0.0.0:514: address already in use"*.
+
+Vigil does not need the port in that case. It reads the file the syslog server already writes - including its rotations
+(`file.1`, `file.2.gz` …) - through a **read-only** mount, and ignores every line that is not a FortiGate log. The syslog
+server, its other consumers (SIEM agents, collectors) and the FortiGate keep working unchanged.
+
+`./install.sh` detects this automatically. To configure it by hand, set in `.env`:
 
 ```bash
-echo "VIGIL_SYSLOG_PORT=5514" >> .env && docker compose up -d
+VIGIL_INPUT=file
+VIGIL_HOST_LOG_DIR=/var/log          # directory of the file on this machine (mounted read-only)
+VIGIL_LOG_NAME=syslog                # the file name; rotations name.1, name.2.gz ... are followed
+VIGIL_HOST_LOG_GID=4                 # a group that may read the file (adm = 4 on Debian/Ubuntu)
+VIGIL_SYSLOG_PORT=5514               # any free port - the built-in receiver is not started
 ```
 
-and use `set port 5514` on the FortiGate.
+then `docker compose up -d`.
+
+- **Permissions.** Vigil runs as an unprivileged user with the extra group `VIGIL_HOST_LOG_GID`, so the file and its directory
+  must be readable by that group (Ubuntu's `/var/log/syslog` is `syslog:adm 640` - fine as is). For a dedicated file, let
+  rsyslog create it group-readable, for example at the top of `/etc/rsyslog.d/fortigate.conf`:
+  ```
+  $FileGroup adm
+  $FileCreateMode 0640
+  ```
+- **First start.** Rotated files last written more than `VIGIL_BACKFILL_DAYS` days ago (default 1) are skipped, so a host with
+  weeks of syslog does not spend hours on history. Set `VIGIL_BACKFILL_DAYS=0` to read everything on disk.
+- **Rotation.** Both logrotate styles work: rename + create (the Debian/Ubuntu default) and `copytruncate`.
+- **A dedicated file is best on busy hosts.** A file that only contains the FortiGate (for example
+  `if $fromhost-ip == '192.0.2.1' then /var/log/remote/fortigate.log`) keeps unrelated system logs away from Vigil and makes
+  ingestion faster.
+- **Your own port instead.** To give Vigil its own receiver anyway, run `./install.sh --receiver --port 5514` and add a second
+  syslog server on the FortiGate (`config log syslogd2 setting`, `set port 5514`).
 
 ## HTTPS
 
