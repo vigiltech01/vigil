@@ -27,6 +27,17 @@ Google Sheet and contact requests are emailed to Gmail. There is no server to ru
    - website form: `data-endpoint=""` in [`docs/contact.md`](../../docs/contact.md)
    - GitHub: repository **variable** `COMMUNITY_URL` and **secret** `STATS_SECRET` (same value as step 3)
 
+### "Sorry, unable to open the file at present"
+
+Google shows this when **several Google accounts are signed in** to the same browser (the address contains
+`authuser=1`, `authuser=2` or `/u/2/`). Either:
+
+- open an **Incognito / private window**, sign in with only the Gmail that should own the data, and repeat the steps; or
+- use a **standalone script** instead of Extensions → Apps Script: in that private window open
+  [script.google.com](https://script.google.com) → **New project**, paste `Code.gs`, and add one more script property,
+  `SHEET_ID` = the long id in your sheet's address (`docs.google.com/spreadsheets/d/<SHEET_ID>/edit`). Then continue
+  from step 4.
+
 After editing `Code.gs` later, use **Deploy → Manage deployments → Edit → Version: New version** so the URL stays the same.
 
 ## Privacy

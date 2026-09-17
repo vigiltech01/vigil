@@ -9,6 +9,7 @@
  * Setup: see README.md next to this file. Script properties used:
  *   NOTIFY_EMAIL  where contact requests are emailed (default: the Google account that owns the script)
  *   STATS_SECRET  shared secret the GitHub workflow sends with "stats" posts
+ *   SHEET_ID      only for a standalone script (script.google.com → New project): the id from the sheet URL
  */
 
 const TABS = {
@@ -66,7 +67,7 @@ function contact(d, props) {
     replyTo: email,
     subject: `Vigil contact - ${INTEREST[d.interest] || 'Other'} - ${clean(d.company, 80) || email}`,
     body: `New message from the Vigil ${clean(d.source, 40) || 'website'} contact form:\n\n${lines.join('\n')}\n\n` +
-          `Reply to this email to answer ${clean(d.name, 200)} directly.\n${SpreadsheetApp.getActiveSpreadsheet().getUrl()}`,
+          `Reply to this email to answer ${clean(d.name, 200)} directly.\n${book().getUrl()}`,
   });
   return reply({ok: true});
 }
@@ -89,8 +90,14 @@ function ping(d) {
   return reply({ok: true});
 }
 
+// bound script: the sheet it belongs to; standalone script: script property SHEET_ID (the long id in the sheet URL)
+function book() {
+  const id = PropertiesService.getScriptProperties().getProperty('SHEET_ID');
+  return id ? SpreadsheetApp.openById(id) : SpreadsheetApp.getActiveSpreadsheet();
+}
+
 function tab(name) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = book();
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
@@ -123,5 +130,5 @@ function setup() {
   Object.keys(TABS).forEach(tab);
   const to = PropertiesService.getScriptProperties().getProperty('NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail();
   MailApp.sendEmail(to, 'Vigil collector is ready', 'Contact requests from the Vigil app and website will arrive at this address.\n\n' +
-                    SpreadsheetApp.getActiveSpreadsheet().getUrl());
+                    book().getUrl());
 }
