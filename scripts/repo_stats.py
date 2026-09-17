@@ -53,8 +53,14 @@ def main():
     print(json.dumps(row))
     out = os.environ.get('STATS_FILE')
     if out:
-        with open(out, 'a') as f:
-            f.write(json.dumps(row) + '\n')
+        try:
+            with open(out) as f:
+                lines = [ln for ln in f.read().splitlines() if ln.strip()]
+        except OSError:
+            lines = []
+        lines = [ln for ln in lines if json.loads(ln).get('date') != row['date']]   # a re-run replaces today's row
+        with open(out, 'w') as f:
+            f.write('\n'.join(lines + [json.dumps(row)]) + '\n')
     url, secret = os.environ.get('COMMUNITY_URL'), os.environ.get('STATS_SECRET')
     if url and secret:
         body = json.dumps(dict(row, type='stats', secret=secret)).encode()
