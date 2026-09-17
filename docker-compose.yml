@@ -1,0 +1,31 @@
+# Vigil - FortiGate log intelligence
+#   docker compose up -d          then open http://<this-host>:8080
+# Point the FortiGate's syslog at this host, UDP (or TCP) port 514. Settings: copy .env.example to .env.
+services:
+  vigil:
+    image: ghcr.io/mrkktesthari/vigil:${VIGIL_VERSION:-latest}
+    build: .
+    container_name: vigil
+    restart: unless-stopped
+    ports:
+      - "${VIGIL_HTTP_PORT:-8080}:8080"
+      - "${VIGIL_SYSLOG_PORT:-514}:5514/udp"
+      - "${VIGIL_SYSLOG_PORT:-514}:5514/tcp"
+    environment:
+      VIGIL_DEMO: "${VIGIL_DEMO:-0}"
+      VIGIL_SYSLOG_ALLOW: "${VIGIL_SYSLOG_ALLOW:-}"
+      VIGIL_RETENTION_DAYS: "${VIGIL_RETENTION_DAYS:-30}"
+      VIGIL_SYSLOG_PUBLISHED_PORT: "${VIGIL_SYSLOG_PORT:-514}"
+      VIGIL_ADMIN_USER: "${VIGIL_ADMIN_USER:-}"
+      VIGIL_ADMIN_PASSWORD: "${VIGIL_ADMIN_PASSWORD:-}"
+    volumes:
+      - vigil-data:/data
+    mem_limit: "${VIGIL_MEM_LIMIT:-4g}"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  vigil-data:

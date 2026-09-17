@@ -1,0 +1,20 @@
+Vigil
+Copyright 2026 Vigil contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It bundles or depends on the following third-party software:
+
+- Apache ECharts 5.5.1 (Apache License 2.0) - https://echarts.apache.org
+- three.js r147 and its examples (MIT License) - https://threejs.org
+- FastAPI (MIT License) - https://fastapi.tiangolo.com
+- Starlette (BSD 3-Clause License) - https://www.starlette.io
+- Uvicorn (BSD 3-Clause License) - https://www.uvicorn.org
+- PyYAML (MIT License) - https://pyyaml.org
+- tldextract (BSD 3-Clause License) and the Public Suffix List (Mozilla Public License 2.0)
+- python-multipart (Apache License 2.0)
+
+Threat descriptions reference the MITRE ATT&CK(R) framework and the CISA Known Exploited Vulnerabilities catalog.
+MITRE ATT&CK is a registered trademark of The MITRE Corporation.
+
+FortiGate, FortiOS and Fortinet are trademarks of Fortinet, Inc. This project is not affiliated with or endorsed by Fortinet.

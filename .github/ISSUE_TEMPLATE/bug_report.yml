@@ -1,0 +1,32 @@
+name: Bug report
+description: Something does not work as described
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Please remove real IP addresses, hostnames and usernames from anything you paste."
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Vigil version
+      placeholder: "docker exec vigil python -m vigil --version"
+    validations:
+      required: true
+  - type: input
+    id: fortios
+    attributes:
+      label: FortiOS version and log format
+      placeholder: "7.4.4, default format over UDP"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Container logs
+      description: "docker compose logs --tail 200 vigil (anonymised)"
+      render: text

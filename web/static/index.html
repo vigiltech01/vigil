@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>Vigil</title>
+<link rel="icon" href="/static/favicon.svg">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/inv.css">
+</head>
+<body>
+<aside class="rail" id="rail">
+  <a class="brand" href="#home" title="Vigil"><svg viewBox="0 0 32 32"><path d="M5 7l11 19L27 7"/><path d="M10.5 7 16 16.5 21.5 7"/></svg></a>
+  <nav id="nav"></nav>
+  <div class="rail-foot">
+    <button class="av" id="av" title="Account">·</button>
+  </div>
+</aside>
+<div class="menu-pop" id="menu-pop" hidden>
+  <div class="who"><b id="who-user">—</b><span id="who-ver">Vigil</span></div>
+  <a href="#settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</a>
+  <a href="#welcome"><svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg>Connect a FortiGate</a>
+  <a href="https://github.com/MrkktestHari/vigil#readme" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2zm0 0a2 2 0 0 1 2-2h12"/></svg>Documentation</a>
+  <a href="/logout" id="logout-link"><svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/></svg>Sign out</a>
+</div>
+<div class="shell">
+  <header class="topbar">
+    <button class="icon-btn menu" id="menu" title="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <div class="ptitle"><h1 id="pg-title">Vigil</h1><p id="pg-desc"></p></div>
+    <div class="controls" id="filters">
+      <span class="status-pill" id="status"><span class="dot"></span><span id="live-text">Connecting…</span></span>
+      <div class="seg" id="ranges">
+        <button data-r="1h">1H</button><button data-r="6h">6H</button><button data-r="24h">24H</button>
+        <button data-r="7d">7D</button><button data-r="30d">30D</button><button data-r="custom" title="Custom range">···</button>
+      </div>
+      <span id="custom" hidden>
+        <input type="datetime-local" id="c-from"> → <input type="datetime-local" id="c-to">
+        <button id="c-apply">Apply</button>
+      </span>
+      <div class="seg small" id="tzs" title="Time zone for all timestamps"><button data-tz="local">Local</button><button data-tz="utc">UTC</button></div>
+      <label class="switch" title="Refresh this page every 30 seconds"><input type="checkbox" id="auto"><span></span>Live</label>
+      <button class="icon-btn" id="refresh" title="Refresh now"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg></button>
+      <span id="rangeinfo" class="updated"></span>
+    </div>
+  </header>
+  <main id="main"></main>
+</div>
+<div id="modal" hidden><div class="box"><header><b id="m-title"></b><button id="m-close">Close</button></header><div id="m-body"></div></div></div>
+<div id="toasts"></div>
+<script src="/static/vendor/echarts.min.js"></script>
+<script src="/static/app.js"></script>
+<script src="/static/home.js"></script>
+<script src="/static/settings.js"></script>
+<script src="/static/security.js"></script>
+<script src="/static/graph3d.js"></script>
+<script src="/static/inv.js"></script>
+</body>
+</html>

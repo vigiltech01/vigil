@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+data/
+web/static/vendor/
+scripts/screenshots/node_modules/
