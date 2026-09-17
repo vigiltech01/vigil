@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1 - 2026-09-17
+
+- Project moved to github.com/vigiltech01/vigil; Docker image is now `ghcr.io/vigiltech01/vigil`.
+- Documentation site on GitHub Pages; README and blog lead with the live 3D view and the one-minute integration.
+
 ## 1.0.0 - 2026-09-17
 
 First public release.
