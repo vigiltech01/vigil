@@ -200,7 +200,7 @@ the live 3D FortiGate dashboard.
 - 🤝 **Crowdfunding:** we are open to it. [Sponsor Vigil on GitHub](https://github.com/sponsors/vigiltech01).
 - 🏢 **Organisations, MSPs and partners:** tell us what you need.
 
-**[→ Contact us](https://vigiltech01.github.io/vigil/contact)** or email **[mrkk62396@gmail.com](mailto:mrkk62396@gmail.com)**
+**[→ Contact us](https://vigiltech01.github.io/vigil/contact)]**
 (the form is also inside the app under *Settings → Community & investors*).
 
 ## Contributing
