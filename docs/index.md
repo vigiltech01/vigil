@@ -5,6 +5,7 @@ syslog dashboard: live attack visualisation, inbound rule risk grading, live con
 plain-English investigations. It is one Docker container, and the integration is one CLI block on the firewall.
 
 [**Get it on GitHub →**](https://github.com/vigiltech01/vigil) · [Read the blog post](blog/introducing-vigil.md) ·
+[FortiAnalyzer alternative?](fortianalyzer-alternative.md) ·
 [FortiGate setup](FORTIGATE.md) · [Install guide](INSTALL.md)
 
 ![Vigil live 3D view of FortiGate traffic](images/live-graph.gif)
