@@ -47,7 +47,9 @@ PAGES.home = {
     const attackers = det ? det.scanners.count + det.bruteforce.length : 0;
     const alarm = grade === 'C' || grade === 'D' || (det && det.bruteforce.some(b => b.possible_success));
     $('#hm-hero').classList.toggle('alarm', grade === 'D');
-    $('#hm-head').textContent = !S.meta.last_event_ts ? 'Waiting for your FortiGate' : grade ? GRADE[grade][2] : alarm ? 'Needs attention' : 'Watching';
+    // grade is "n/a" on a firewall whose rules publish nothing to the internet - there is no grade to show then
+    $('#hm-head').textContent = !S.meta.last_event_ts ? 'Waiting for your FortiGate'
+      : (GRADE[grade] || [])[2] || (alarm ? 'Needs attention' : 'Watching');
     $('#hm-lead').innerHTML = !S.meta.last_event_ts
       ? 'No logs have arrived yet. <a href="#welcome">Connect your FortiGate</a> - it takes two commands.'
       : `In ${rangeTxt} ${esc(fw.name || 'the firewall')} handled <b>${fmtK(allowed + denied + blocked)}</b> inbound requests and turned away
@@ -55,9 +57,11 @@ PAGES.home = {
          ${threats ? `<b>${fmtN(threats)}</b> exploit attempts were caught by IPS.` : 'No exploit attempts were detected.'}
          ${sec && !sec.config.loaded ? '<br><span class="muted">Upload a configuration backup in <a href="#settings">Settings</a> to grade your rules.</span>' : ''}`;
     $('#hm-stats').innerHTML = [[fmtK(denied + blocked), 'Blocked', `${allowed + denied + blocked ? Math.round(100 * (denied + blocked) / (allowed + denied + blocked)) : 0}% of inbound`],
-      [fmtK(threats), 'Threats stopped', 'IPS detections'], [fmtK(allowed), 'Allowed in', 'to your published services']]
+      [fmtK(threats), 'Threats stopped', 'IPS detections'],
+      [fmtK(allowed), 'Allowed in', grade === 'n/a' ? 'to the firewall itself (VPN, admin)' : 'to your published services']]
       .map(([n, l, d]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div><div class="d">${d}</div></div>`).join('');
-    $('#hm-gauge').innerHTML = gaugeH(grade, p ? `${p.levels.critical} critical · ${p.levels.high} high-risk rules` : 'no configuration loaded');
+    $('#hm-gauge').innerHTML = gaugeH(grade, !p || !sec.config.loaded ? 'no configuration loaded'
+      : grade === 'n/a' ? 'no rule publishes a server' : `${p.levels.critical} critical · ${p.levels.high} high-risk rules`);
     requestAnimationFrame(() => requestAnimationFrame(() => { const r = $('#hm-ring'); if (r) r.style.strokeDashoffset = r.dataset.off; }));
     // timeline: fixed categorical order - allowed (slot 1), denied (slot 2), security block (slot 3)
     const series = [['Allowed', 1, C.s[0]], ['Denied', 2, C.s[1]], ['Stopped by security profile', 3, C.s[2]]].map(([name, i, color]) =>
