@@ -5,6 +5,7 @@ interfaces, admin and SSL-VPN ports) and every secret-looking value is removed b
 passwords, pre-shared keys, private keys, certificates, tokens, SNMP communities and all `ENC ...` values.
 Multi-VDOM backups: global settings plus the chosen VDOM (default `root`).
 """
+import gzip
 import re
 import shlex
 import time
@@ -31,6 +32,52 @@ YAML_ESCAPES = set('0abtnvfre "/\\N_LPxuU\n')     # everything YAML allows after
 
 class ConfigError(ValueError):
     pass
+
+
+# ---------------------------------------------------------------- any file a FortiGate hands out
+def _decode(data):
+    """Bytes of a backup -> text. Handles gzip (.conf.gz), UTF-16 and BOMs; FortiOS itself writes UTF-8."""
+    if isinstance(data, str):
+        return data
+    if data[:2] == b'\x1f\x8b':
+        try:
+            data = gzip.decompress(data)
+        except OSError as e:
+            raise ConfigError(f'The file looks gzipped but could not be unpacked: {e}') from e
+    for bom, enc in ((b'\xff\xfe', 'utf-16-le'), (b'\xfe\xff', 'utf-16-be'), (b'\xef\xbb\xbf', 'utf-8-sig')):
+        if data.startswith(bom):
+            return data.decode(enc, 'replace')
+    return data.decode('utf-8', 'replace')
+
+
+def _looks_encrypted(text):
+    """FortiOS writes an encrypted backup as a header plus base64 ciphertext - readable config never looks like that."""
+    head = text[:2048]
+    if '#FGBK' in head[:64]:
+        return True
+    body = text[:8192]
+    printable = sum(c.isprintable() or c in '\r\n\t' for c in body)
+    return printable / max(1, len(body)) < 0.85
+
+
+def _yaml_vdom(tree, vdom):
+    """Multi-VDOM YAML export: the per-VDOM sections live under a "vdom" key. Returns (flat tree, VDOM names)."""
+    v = tree.get('vdom')
+    if not v:
+        return tree, []
+    entries = v if isinstance(v, list) else [v]
+    names, chosen = [], None
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        for name, sections in item.items():
+            names.append(str(name))
+            if str(name) == vdom and isinstance(sections, dict):
+                chosen = sections                # only the VDOM that was asked for - never silently another one
+    out = {k: val for k, val in tree.items() if k != 'vdom'}
+    if chosen:
+        out.update(chosen)                       # global sections stay, the VDOM's sections win
+    return out, names
 
 
 # ---------------------------------------------------------------- YAML format
@@ -228,10 +275,16 @@ def _flatten_cli(tree, vdom):
 
 # ---------------------------------------------------------------- entry point
 def import_backup(data, filename='backup.conf', backup_ms=None, vdom='root'):
-    """bytes/str of a FortiOS backup -> (clean dict ready to save as YAML, summary). Raises ConfigError."""
-    text = data.decode('utf-8', 'replace') if isinstance(data, bytes) else data
+    """bytes/str of a FortiOS backup -> (clean dict ready to save as YAML, summary). Raises ConfigError.
+
+    Takes what any FortiGate offers: CLI or YAML, single or multi-VDOM, plain, gzipped or UTF-16, any model
+    and FortiOS version. An encrypted backup cannot be read and says so."""
+    text = _decode(data)
     if len(text) < 20:
         raise ConfigError('The file is empty.')
+    if _looks_encrypted(text):
+        raise ConfigError('This backup is encrypted (password-protected). In the FortiGate backup dialog turn '
+                          'encryption off, or upload the YAML export instead.')
     head = text[:4096]
     info = {'filename': filename, 'format': None, 'model': None, 'version': None, 'build': None, 'vdoms': []}
     m = HEADER.search(head)
@@ -250,9 +303,13 @@ def import_backup(data, filename='backup.conf', backup_ms=None, vdom='root'):
         if not isinstance(tree, dict):
             raise ConfigError('Not a FortiOS configuration backup (CLI or YAML).')
         info['format'] = 'yaml'
+        tree, info['vdoms'] = _yaml_vdom(tree, vdom)
     clean = _filter(tree)
     if not clean.get('firewall_policy'):
-        raise ConfigError('No firewall policies found - is this a full configuration backup of the right VDOM?')
+        where = f" This backup has VDOMs: {', '.join(info['vdoms'])}." if info['vdoms'] else ''
+        found = ', '.join(sorted(clean)[:6]) or 'nothing Vigil recognises'
+        raise ConfigError(f'No firewall policies found in VDOM "{vdom}".{where} The file contains: {found}. '
+                          'Upload a full configuration backup, and pick the VDOM that holds the policies.')
     now = int(time.time() * 1000)
     clean = {'_source': filename, '_backup_ms': int(backup_ms or now), '_uploaded_ms': now,
              '_model': info['model'], '_version': info['version'], **clean}

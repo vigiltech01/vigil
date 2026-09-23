@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Any backup a FortiGate hands out.** CLI or YAML, single or multi-VDOM, plain, gzipped, UTF-16 or BOM-prefixed,
+  any model and FortiOS version (two- and three-part versions). A multi-VDOM export reads only the VDOM asked for and
+  lists the VDOMs it holds if that one has no policies; an encrypted backup says so instead of failing obscurely, and
+  a file that is not a FortiOS backup names what was found. Verified against 20 real backups of two models.
+
 - **Inbound now means "from the internet", not only "to a published server".** On a branch or SD-WAN firewall nothing is
   published, and the whole exposed surface is traffic aimed at the firewall itself (SSL-VPN portal, admin ports,
   scanners), which FortiOS logs as traffic:local from a WAN interface. Every inbound view counted only forwarded

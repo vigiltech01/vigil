@@ -166,3 +166,62 @@ def test_yaml_loader_helpers():
     mixed = FORTIOS_YAML.replace('        entries:', '        entries: [unclosed\n        more:')
     info = fgconf.import_backup(mixed.encode(), 'x.conf.yaml')[1]
     assert info['policies'] == 2 and info['addresses'] == 1
+
+
+MULTI_VDOM_YAML = '''#config-version=FG200F-7.2.8-FW-build1639-240110:opmode=0:vdom=1:user=admin
+system_global:
+    hostname: "fgt-mv"
+    admin-sport: 8443
+vdom:
+    - other-vd:
+        firewall_policy:
+            - 99:
+                name: "wrong-vdom"
+                srcintf: "wan2"
+                dstintf: "lan"
+                srcaddr: "all"
+                dstaddr: "all"
+                action: accept
+    - root:
+        firewall_policy:
+            - 12:
+                name: "web-in"
+                srcintf: "wan1"
+                dstintf: "lan"
+                srcaddr: "all"
+                dstaddr: "all"
+                action: accept
+            - 13:
+                name: "second"
+                srcintf: "wan1"
+                dstintf: "lan"
+                srcaddr: "all"
+                dstaddr: "all"
+'''
+
+
+def test_backup_shapes_a_fortigate_can_hand_out():
+    """Any model, any FortiOS, CLI or YAML, plain / gzipped / UTF-16 - and a clear answer when it cannot be read."""
+    import gzip as gz
+    plain = FORTIOS_YAML.encode()
+    assert fgconf.import_backup(gz.compress(plain), 'b.conf.yaml.gz')[1]['policies'] == 2
+    assert fgconf.import_backup(b'\xff\xfe' + FORTIOS_YAML.encode('utf-16-le'), 'b.yaml')[1]['policies'] == 2
+    assert fgconf.import_backup(b'\xef\xbb\xbf' + plain, 'b.yaml')[1]['policies'] == 2
+    with pytest.raises(fgconf.ConfigError) as e:                       # encrypted backup: say so, do not guess
+        fgconf.import_backup(b'#FGBK|1|FGT|0|' + bytes(range(256)) * 8, 'enc.conf')
+    assert 'encrypted' in str(e.value)
+    with pytest.raises(fgconf.ConfigError) as e:                       # wrong file: name what was found
+        fgconf.import_backup(b'client\ndev tun\nremote 198.51.100.1 1194\n' * 5, 'vpn.conf')
+    assert 'FortiOS' in str(e.value) or 'No firewall policies' in str(e.value)
+
+
+def test_multi_vdom_yaml_picks_the_requested_vdom():
+    clean, info = fgconf.import_backup(MULTI_VDOM_YAML.encode(), 'multi.conf.yaml', vdom='root')
+    assert set(info['vdoms']) == {'other-vd', 'root'}
+    assert [str(list(p)[0]) for p in clean['firewall_policy']] == ['12', '13']
+    assert clean['system_global']['admin-sport'] == 8443                # global sections survive
+    other, _ = fgconf.import_backup(MULTI_VDOM_YAML.encode(), 'multi.conf.yaml', vdom='other-vd')
+    assert [str(list(p)[0]) for p in other['firewall_policy']] == ['99']
+    with pytest.raises(fgconf.ConfigError) as e:
+        fgconf.import_backup(MULTI_VDOM_YAML.encode(), 'multi.conf.yaml', vdom='nope')
+    assert 'other-vd' in str(e.value) and 'root' in str(e.value)        # tell the operator which VDOMs exist
