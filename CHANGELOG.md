@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **No more "n/a" grade.** A firewall that publishes nothing was graded on rules it does not have. It is now graded on
+  what it really exposes - remote access (SSL-VPN), the management plane, password guessing against them and what the
+  internet actually reached - and the page says which of the two it graded.
+
 - **Any backup a FortiGate hands out.** CLI or YAML, single or multi-VDOM, plain, gzipped, UTF-16 or BOM-prefixed,
   any model and FortiOS version (two- and three-part versions). A multi-VDOM export reads only the VDOM asked for and
   lists the VDOMs it holds if that one has no policies; an encrypted backup says so instead of failing obscurely, and

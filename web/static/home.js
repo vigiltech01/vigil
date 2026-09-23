@@ -58,10 +58,11 @@ PAGES.home = {
          ${sec && !sec.config.loaded ? '<br><span class="muted">Upload a configuration backup in <a href="#settings">Settings</a> to grade your rules.</span>' : ''}`;
     $('#hm-stats').innerHTML = [[fmtK(denied + blocked), 'Blocked', `${allowed + denied + blocked ? Math.round(100 * (denied + blocked) / (allowed + denied + blocked)) : 0}% of inbound`],
       [fmtK(threats), 'Threats stopped', 'IPS detections'],
-      [fmtK(allowed), 'Allowed in', grade === 'n/a' ? 'to the firewall itself (VPN, admin)' : 'to your published services']]
+      [fmtK(allowed), 'Allowed in', p && p.graded === 'exposure' ? 'to the firewall itself (VPN, admin)' : 'to your published services']]
       .map(([n, l, d]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div><div class="d">${d}</div></div>`).join('');
     $('#hm-gauge').innerHTML = gaugeH(grade, !p || !sec.config.loaded ? 'no configuration loaded'
-      : grade === 'n/a' ? 'no rule publishes a server' : `${p.levels.critical} critical · ${p.levels.high} high-risk rules`);
+      : p.graded === 'exposure' ? 'remote access and admin exposure'
+      : `${p.levels.critical} critical · ${p.levels.high} high-risk rules`);
     requestAnimationFrame(() => requestAnimationFrame(() => { const r = $('#hm-ring'); if (r) r.style.strokeDashoffset = r.dataset.off; }));
     // timeline: fixed categorical order - allowed (slot 1), denied (slot 2), security block (slot 3)
     const series = [['Allowed', 1, C.s[0]], ['Denied', 2, C.s[1]], ['Stopped by security profile', 3, C.s[2]]].map(([name, i, color]) =>
@@ -86,7 +87,9 @@ PAGES.home = {
     // feature cards
     $('#hm-feat').innerHTML = [
       ['#graph', 'globe', 'Live traffic', 'Watch every inbound request hit a 3D model of your firewall. Click one to capture the exact log line.', '#3987e5'],
-      ['#security', 'shield', 'Inbound security', grade ? `Grade ${grade}: ${p.open_to_anyone} rules open to anyone, ${p.no_ips} without IPS.` : 'Grade every internet-facing rule and see how it could be attacked.', '#d03b3b'],
+      ['#security', 'shield', 'Inbound security', !grade ? 'Grade every internet-facing rule and see how it could be attacked.'
+        : p.graded === 'exposure' ? `Grade ${grade}: nothing is published; remote access and admin exposure are what count here.`
+        : `Grade ${grade}: ${p.open_to_anyone} rules open to anyone, ${p.no_ips} without IPS.`, '#d03b3b'],
       ['#investigate', 'search', 'Investigate', 'Ask “why was 203.0.113.9 blocked?” and follow the path hop by hop.', '#9085e9'],
       ['#utm', 'alert', 'Threats', 'IPS detections, application control, web filtering and admin activity.', '#c98500'],
     ].map(([href, ic, t, d, glow]) => `<a class="feature" href="${href}"><span class="glow" style="background:${glow}"></span>

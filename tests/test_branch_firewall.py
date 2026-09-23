@@ -58,3 +58,20 @@ def test_local_in_from_internet_counts_as_inbound(tmp_path):
     assert out['inbound_sources'] == 1, out
     assert out['countries'] == ['Germany'], out    # LAN traffic to the firewall ("Reserved") stays out of it
     assert out['timeline_allowed'] == 20, out
+
+
+def test_grade_falls_back_to_exposure_when_nothing_is_published():
+    """With no inbound rules the grade must describe the real exposure, not give up with "n/a"."""
+    from vigil.security import _grade
+    vpn = {'findings': [{'level': 'high', 'text': 'SSL-VPN is enabled on the internet interface'}], 'sslvpn_enabled': True}
+    locked = {'findings': [{'level': 'good', 'text': 'Admin login restricted'}], 'sslvpn_enabled': False}
+    open_admin = {'findings': [{'level': 'critical', 'text': 'Admin login page is open to the whole internet'}],
+                  'sslvpn_enabled': True}
+    reached = [{'allowed': 5}]
+    assert _grade([{'level': 'low'}]) == 'A'                                  # rules still grade rules
+    assert _grade([{'level': 'critical'}] * 3) == 'D'
+    assert _grade([], {}, None, None) == 'n/a'                                # nothing known at all
+    assert _grade([], {}, locked, reached) == 'A'                             # locked down, nothing published
+    assert _grade([], {}, vpn, reached) == 'B'                                # remote access on the internet
+    assert _grade([], {'bruteforce': [{'possible_success': False}]}, vpn, reached) == 'C'
+    assert _grade([], {'bruteforce': [{'possible_success': True}]}, open_admin, reached) == 'D'

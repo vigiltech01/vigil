@@ -29,12 +29,15 @@ PAGES.security = {
            ${last ? ` · last: <a href="#security?tab=changes">${esc(last.text)}</a> <span class="muted">(${esc(fmtT(last.ts, 'dhm'))} by ${esc(last.user || '?')})</span>` : ''}
            ${Object.keys(lv.position_unknown || {}).length ? ` · <span class="warnt">⚠ rule order may have changed</span>` : ''}</div>`
         : `<span class="muted">Config ${esc(d.config.file || '')}.</span>`;
-      if (!p.accept_rules) {    // e.g. a branch firewall: nothing is published to the internet, so there is nothing to grade
-        banner($('#sec-banner'), 'No rules let traffic in from the internet',
-          `This configuration has <b>${p.rules_total}</b> rules, but none of them accepts traffic arriving on a WAN interface,
-           so there is no inbound exposure to grade. What still matters here: <b>remote access</b> (SSL-VPN / IPsec) and
-           <b>who may reach the firewall itself</b> - see <a href="#security?tab=admin">Firewall admin access</a> - plus the
-           attacks the logs show below. ${cfgLine}`, 'ok');
+      if (!p.accept_rules) {    // a branch firewall publishes nothing, so it is graded on what it does expose
+        const bfx = det.bruteforce.length, sslvpn = d.admin && d.admin.sslvpn_enabled;
+        banner($('#sec-banner'), `Exposure grade ${p.grade} · nothing is published to the internet`,
+          `None of the <b>${p.rules_total}</b> rules lets internet traffic in to a server, so the grade is about this
+           firewall's own exposure: ${sslvpn ? `<b>SSL-VPN is reachable from the internet</b>` : 'remote access'},
+           ${bfx ? `<b>${bfx}</b> source(s) guessing passwords on it,` : 'no password guessing,'} and who may reach the
+           management plane - see <a href="#security?tab=admin">Firewall admin access</a>.
+           What the internet actually reached is listed below. ${cfgLine}`,
+          p.grade === 'D' ? 'bad' : p.grade === 'A' ? 'ok' : '');
       } else {
         banner($('#sec-banner'), `Inbound security grade ${p.grade} · ${p.levels.critical} critical and ${p.levels.high} high-risk rules`,
           `${p.accept_rules} rules let internet traffic in to ${p.servers} servers. <b>${p.open_to_anyone}</b> of them are open to anyone on the internet and

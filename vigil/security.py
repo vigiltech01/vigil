@@ -247,7 +247,8 @@ def assemble(b, model):
                         'open_to_anyone': sum(1 for r in accepts if r['source']['scope'] == 'any'),
                         'no_ips': sum(1 for r in accepts if not r['ips']),
                         'unused': sum(1 for r in accepts if r.get('unused')),
-                        'servers': len(services), 'grade': _grade(accepts)},
+                        'servers': len(services), 'grade': _grade(accepts, det, admin, b.get('entry_points')),
+                        'graded': 'rules' if accepts else 'exposure'},
             'priorities': priorities, 'rules': sorted(rules_out, key=lambda r: (r['action'] != 'accept', not r['enabled'], -r['score'])),
             'detections': det, 'admin': admin, 'entry_points': b.get('entry_points') or []}
 
@@ -264,12 +265,36 @@ def _rule_sentence(a):
     return s + '.'
 
 
-def _grade(accepts):
-    if not accepts:
-        return 'n/a'
-    crit = sum(1 for r in accepts if r['level'] == 'critical')
-    high = sum(1 for r in accepts if r['level'] == 'high')
-    return 'D' if crit >= 3 else 'C' if crit or high >= 5 else 'B' if high else 'A'
+def _grade(accepts, det=None, admin=None, entry_points=None):
+    """Grade what this firewall actually exposes.
+
+    A firewall that publishes servers is graded on those rules. One that publishes nothing - a branch or SD-WAN
+    office box - still has an attack surface: the firewall itself. Grading it on rules it does not have would say
+    "n/a" and hide a wide-open SSL-VPN being brute-forced, so it is graded on remote access, the management plane
+    and what the internet actually reached.
+    """
+    if accepts:
+        crit = sum(1 for r in accepts if r['level'] == 'critical')
+        high = sum(1 for r in accepts if r['level'] == 'high')
+        return 'D' if crit >= 3 else 'C' if crit or high >= 5 else 'B' if high else 'A'
+    det, admin = det or {}, admin or {}
+    bf = det.get('bruteforce') or []
+    reached = [e for e in (entry_points or []) if e.get('allowed')]
+    if not admin and not reached:
+        return 'n/a'                                       # no configuration and nothing reached: nothing to judge
+    score = 0
+    if any(f['level'] == 'critical' for f in admin.get('findings', [])):
+        score += 3                                         # admin page open to the internet
+    if any(b.get('possible_success') for b in bf):
+        score += 3                                         # a login service was guessed at and something got through
+    elif bf:
+        score += 2
+    if admin.get('sslvpn_enabled'):
+        score += 1                                         # remote access on the internet: patch level matters (KEV CVEs)
+    score += sum(1 for f in admin.get('findings', []) if f['level'] == 'high' and 'SSL-VPN' not in f['text'])
+    if det.get('recon_then_access'):
+        score += 1
+    return 'D' if score >= 5 else 'C' if score >= 3 else 'B' if score >= 1 else 'A'
 
 
 def _priorities(accepts, det, admin):
