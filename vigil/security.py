@@ -8,7 +8,7 @@ import time
 from collections import defaultdict
 
 from . import rules as R
-from .queries import q, conf, floor, H1, DAY, M5, DROP_IN
+from .queries import q, conf, floor, H1, DAY, M5, DROP_IN, IN_DIR_NOGEO
 from .threatkb import KB, AUTH_PORTS, SCAN_PORTS, BRUTE_SHORT_PER_HOUR, PORT_CLASS
 
 LEVELS = ['critical', 'high', 'medium', 'low', 'good']
@@ -30,7 +30,7 @@ def rule_evidence(frm, to):
         ev[r['policyid']]['countries'][r['country'] or '?'] = r['n']
     for r in q("""SELECT policyid, dst, dpt, sum(n) AS n FROM r_in_1h WHERE b >= ? AND b < ? GROUP BY 1, 2, 3""", (hfrm, to)):
         ev[r['policyid']]['servers'][f"{r['dst']}:{r['dpt']}"] = r['n']
-    for r in q("""SELECT policyid, act, sum(n) AS n FROM r_app_5m WHERE dir = 'in' AND b >= ? AND b < ? GROUP BY 1, 2""",
+    for r in q(f"""SELECT policyid, act, sum(n) AS n FROM r_app_5m WHERE {IN_DIR_NOGEO} AND b >= ? AND b < ? GROUP BY 1, 2""",
                (floor(frm, M5), to)):
         ev[r['policyid']]['app_' + (r['act'] or '')] = r['n']
     for r in q("""SELECT policyid, count(*) AS n, count(DISTINCT attack) AS sigs FROM utm_ips WHERE ts >= ? AND ts < ?
@@ -107,7 +107,7 @@ def detections(frm, to, model):
     for r in out['ips']:
         r['policy'] = pn.get(r['policyid'])
     # 6. wrong protocol on an allowed port (tunnelling / abuse)
-    out['protocol_abuse'] = q("""SELECT policyid, app, evtype, act, sum(n) AS n FROM r_app_5m WHERE dir = 'in' AND b >= ? AND b < ?
+    out['protocol_abuse'] = q(f"""SELECT policyid, app, evtype, act, sum(n) AS n FROM r_app_5m WHERE {IN_DIR_NOGEO} AND b >= ? AND b < ?
                                 AND (evtype = 'port-violation' OR act = 'block') GROUP BY 1, 2, 3, 4 ORDER BY n DESC LIMIT 25""",
                               (floor(frm, M5), to))
     for r in out['protocol_abuse']:

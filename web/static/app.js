@@ -212,8 +212,12 @@ function drawTable(el) {
   }).join('')}</tr>`).join('');
   el.innerHTML = (rows.length ? `<div class="tbl-wrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`
     : `<div class="empty">${esc(o.empty || 'No data in this range.')}</div>`) +
-    `<div class="tbl-foot"><span>${fmtN(rows.length)} rows${rows.length > lim ? `, showing ${lim}` : ''}</span>${o.note ? `<span>· ${o.note}</span>` : ''}
-     <span class="grow"></span>${rows.length ? '<button class="csv">CSV</button>' : ''}</div>`;
+    (rows.length ? `<div class="tbl-foot"><span>${fmtN(rows.length)} rows${rows.length > lim ? `, showing ${lim}` : ''}</span>${o.note ? `<span>· ${o.note}</span>` : ''}
+     <span class="grow"></span><button class="csv">CSV</button></div>` : '');
+  // A check that found nothing still matters to an analyst, but it must not take a screenful: the card
+  // shrinks to a single quiet line instead of showing an empty table (o.keepEmpty opts out).
+  const sec = el.closest('.card');
+  if (sec) sec.classList.toggle('quiet', !rows.length && !o.keepEmpty);
   el.querySelectorAll('th').forEach(th => th.onclick = () => {
     const k = th.dataset.k;
     el._sort = {k, d: el._sort && el._sort.k === k ? -el._sort.d : (cols.find(c => c.k === k).num ? -1 : 1)};

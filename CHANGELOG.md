@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Inbound now means "from the internet", not only "to a published server".** On a branch or SD-WAN firewall nothing is
+  published, and the whole exposed surface is traffic aimed at the firewall itself (SSL-VPN portal, admin ports,
+  scanners), which FortiOS logs as traffic:local from a WAN interface. Every inbound view counted only forwarded
+  traffic, so those firewalls showed "0 inbound requests" while the attack tables were full. Inbound totals, the
+  timeline, per-rule evidence, insights and detections now include it, and LAN traffic to the firewall stays out.
+- Tables that find nothing collapse to one quiet line instead of an empty table, and the interface is denser
+  (smaller rail, top bar, cards, charts and base font).
+
 - **Fixed: YAML configuration backups were rejected** with "No firewall policies found". Both the CLI backup and the YAML
   export start with `#config-version=`, so YAML files were parsed as CLI. The format is now decided by the body, and the
   YAML loader copes with what FortiOS actually writes: escapes YAML does not define (' inside quoted values), keys that

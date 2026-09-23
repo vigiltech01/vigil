@@ -10,6 +10,13 @@ from . import db, settings
 APP_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 M1, M5, H1, DAY = 60_000, 300_000, 3_600_000, 86_400_000
 DROPS = ('deny', 'block', 'blocked', 'dropped', 'reset', 'utm-block')
+# "Inbound from the internet" has two shapes, and a firewall usually has one of them:
+#   * forward traffic from a WAN interface to a published server  (dir 'in' / 'wan'), and
+#   * traffic aimed at the firewall itself from the internet      (dir 'local' with a real source country) -
+#     on a branch or SD-WAN firewall that is the entire attack surface: SSL-VPN portal, admin ports, scanners.
+# Rollups that carry a country column can tell the second case from LAN traffic to the firewall (country 'Reserved').
+IN_DIR = "(dir IN ('in', 'wan') OR (dir = 'local' AND country NOT IN ('', 'Reserved')))"
+IN_DIR_NOGEO = "dir IN ('in', 'wan', 'local')"
 DROP_IN = "('deny','block','blocked','dropped','reset','utm-block')"
 ENDS = ('close', 'client-rst', 'server-rst', 'timeout')
 UNCLASSIFIED_PREFIX = ('tcp/', 'udp/', 'TCP-', 'UDP-')
@@ -207,8 +214,8 @@ def overview(frm, to):
     drops = q('SELECT (b / ?) * ? AS t, sum(n) AS n FROM r_1m WHERE b >= ? AND b < ? AND act IN ' + DROP_IN +
               " AND NOT (cat LIKE 'traffic:%' AND act = 'deny') GROUP BY 1", (step, step, floor(frm, M1), to))
     hfrm = floor(frm, H1)
-    top_in = q("""SELECT src, max(country) AS country, sum(n) AS n, sum(drops) AS drops, sum(sent + rcvd) AS bytes,
-                  group_concat(DISTINCT policyid) AS policies FROM r_src_1h WHERE dir = 'in' AND b >= ? AND b < ?
+    top_in = q(f"""SELECT src, max(country) AS country, sum(n) AS n, sum(drops) AS drops, sum(sent + rcvd) AS bytes,
+                  group_concat(DISTINCT policyid) AS policies FROM r_src_1h WHERE {IN_DIR} AND b >= ? AND b < ?
                   GROUP BY src ORDER BY n DESC LIMIT 10""", (hfrm, to))
     top_out = q("""SELECT r.src, h.name AS host, sum(n) AS n, sum(drops) AS drops, sum(sent) AS sent, sum(rcvd) AS rcvd
                    FROM r_src_1h r LEFT JOIN host h ON h.ip = r.src WHERE dir = 'out' AND b >= ? AND b < ?
@@ -222,8 +229,8 @@ def inbound(frm, to):
     c = conf()
     b5, hfrm = floor(frm, M5), floor(frm, H1)
     pol = {}
-    for r in q("""SELECT policyid, act, app, dpt, proto, country, sum(n) AS n, sum(sent + rcvd) AS bytes, max(b) AS last
-                  FROM r_pol_5m WHERE dir = 'in' AND b >= ? AND b < ? GROUP BY 1, 2, 3, 4, 5, 6""", (b5, to)):
+    for r in q(f"""SELECT policyid, act, app, dpt, proto, country, sum(n) AS n, sum(sent + rcvd) AS bytes, max(b) AS last
+                  FROM r_pol_5m WHERE {IN_DIR} AND b >= ? AND b < ? GROUP BY 1, 2, 3, 4, 5, 6""", (b5, to)):
         p = pol.setdefault(r['policyid'], {'policyid': r['policyid'], 'hits': 0, 'drops': 0, 'bytes': 0, 'last': 0,
                                            'countries': set(), 'apps': {}, 'ports': {}, 'unexpected': 0})
         p['hits'] += r['n']; p['bytes'] += r['bytes'] or 0; p['last'] = max(p['last'], r['last'])
@@ -233,8 +240,8 @@ def inbound(frm, to):
         p['apps'][r['app']] = p['apps'].get(r['app'], 0) + r['n']
         port = f"{r['dpt']}/{ {6: 'tcp', 17: 'udp', 1: 'icmp'}.get(r['proto'], r['proto'])}"
         p['ports'][port] = p['ports'].get(port, 0) + r['n']
-    for r in q("""SELECT policyid, app, act, applist, sum(n) AS n, max(b) AS last FROM r_app_5m
-                  WHERE dir = 'in' AND b >= ? AND b < ? GROUP BY 1, 2, 3, 4""", (b5, to)):
+    for r in q(f"""SELECT policyid, app, act, applist, sum(n) AS n, max(b) AS last FROM r_app_5m
+                  WHERE {IN_DIR_NOGEO} AND b >= ? AND b < ? GROUP BY 1, 2, 3, 4""", (b5, to)):
         p = pol.setdefault(r['policyid'], {'policyid': r['policyid'], 'hits': 0, 'drops': 0, 'bytes': 0, 'last': 0,
                                            'countries': set(), 'apps': {}, 'ports': {}, 'unexpected': 0})
         p.setdefault('ctl', {}).setdefault(r['app'], [0, 0])
@@ -244,8 +251,8 @@ def inbound(frm, to):
             p['blocked'] = p.get('blocked', 0) + r['n']
         p.setdefault('sensors', set()).add(r['applist'])
         p['last'] = max(p['last'], r['last'])
-    srcs = {r['policyid']: r['n'] for r in q("""SELECT policyid, count(DISTINCT src) AS n FROM r_src_1h
-                  WHERE dir = 'in' AND b >= ? AND b < ? GROUP BY 1""", (hfrm, to))}
+    srcs = {r['policyid']: r['n'] for r in q(f"""SELECT policyid, count(DISTINCT src) AS n FROM r_src_1h
+                  WHERE {IN_DIR} AND b >= ? AND b < ? GROUP BY 1""", (hfrm, to))}
     out = []
     for pid, p in pol.items():
         apps = dict(p['apps'])
@@ -262,11 +269,11 @@ def inbound(frm, to):
     tb = floor(frm, H1 if src_t.endswith('1h') else DAY)
     deny_pol = q("""SELECT policyid, cat, inif, sum(n) AS n FROM r_deny_5m WHERE b >= ? AND b < ?
                     GROUP BY 1, 2, 3 ORDER BY n DESC""", (b5, to))
-    flows = q("""SELECT country, policyid, dpt, proto, app, sum(n) AS n FROM r_pol_5m
-                 WHERE dir = 'in' AND b >= ? AND b < ? AND act NOT IN """ + DROP_IN + """
+    flows = q(f"""SELECT country, policyid, dpt, proto, app, sum(n) AS n FROM r_pol_5m
+                 WHERE {IN_DIR} AND b >= ? AND b < ? AND act NOT IN {DROP_IN}
                  GROUP BY 1, 2, 3, 4, 5 ORDER BY n DESC LIMIT 60""", (b5, to))
-    countries_acc = q("""SELECT country, sum(n) AS n FROM r_pol_5m WHERE dir = 'in' AND b >= ? AND b < ?
-                         AND act NOT IN """ + DROP_IN + " GROUP BY 1 ORDER BY n DESC LIMIT 25", (b5, to))
+    countries_acc = q(f"""SELECT country, sum(n) AS n FROM r_pol_5m WHERE {IN_DIR} AND b >= ? AND b < ?
+                         AND act NOT IN {DROP_IN} GROUP BY 1 ORDER BY n DESC LIMIT 25""", (b5, to))
     countries_deny = q(f"""SELECT country, sum(n) AS n, count(DISTINCT src) AS srcs FROM {src_t}
                           WHERE b >= ? AND b < ? GROUP BY 1 ORDER BY n DESC LIMIT 25""", (tb, to))
     deny_src = q(f"""SELECT src, max(country) AS country, group_concat(DISTINCT inif) AS inif,
@@ -279,7 +286,7 @@ def inbound(frm, to):
     if new_src:
         pmap = {}
         marks = ','.join('?' * len(new_src))
-        for r in q(f"""SELECT src, group_concat(DISTINCT policyid) AS p FROM r_src_1h WHERE dir = 'in' AND b >= ?
+        for r in q(f"""SELECT src, group_concat(DISTINCT policyid) AS p FROM r_src_1h WHERE {IN_DIR} AND b >= ?
                        AND src IN ({marks}) GROUP BY src""", (hfrm, *[r['src'] for r in new_src])):
             pmap[r['src']] = r['p']
         for r in new_src:

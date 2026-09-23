@@ -2,7 +2,7 @@
 import os
 import time
 
-from .queries import q, conf, floor, unexpected, DROP_IN, M5, H1, DAY
+from .queries import q, conf, floor, unexpected, DROP_IN, IN_DIR, IN_DIR_NOGEO, M5, H1, DAY
 from .ingest import LOG_BASE
 
 SEV = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'info': 4}
@@ -44,8 +44,8 @@ def insights(frm, to):
         out.append(_i(sev, f"IPS: {r['n']:,} {r['severity']} events ({r['attacks']} signatures)", '',
                       {'table': 'utm_ips', 'q': r['severity']}, 'ips'))
     # 4. apps outside EXPECTED (Layer 1)
-    rows = q("""SELECT policyid, app, sum(n) AS n FROM r_app_5m WHERE dir = 'in' AND b >= ? AND b < ? GROUP BY 1, 2
-                UNION ALL SELECT policyid, app, sum(n) FROM r_pol_5m WHERE dir = 'in' AND b >= ? AND b < ?
+    rows = q(f"""SELECT policyid, app, sum(n) AS n FROM r_app_5m WHERE {IN_DIR_NOGEO} AND b >= ? AND b < ? GROUP BY 1, 2
+                UNION ALL SELECT policyid, app, sum(n) FROM r_pol_5m WHERE {IN_DIR} AND b >= ? AND b < ?
                 AND act NOT IN """ + DROP_IN + ' GROUP BY 1, 2', (b5, to, b5, to))
     une = {}
     for r in rows:
@@ -58,7 +58,7 @@ def insights(frm, to):
                       {'table': 'utm_app', 'policyid': pid}, 'layer1'))
     # 5. src=all policies that in practice see few sources (Layer 2)
     for pid in c.get('src_all_policies', []):
-        r = q("""SELECT count(DISTINCT src) AS n, sum(n) AS hits FROM r_src_1h WHERE dir = 'in' AND policyid = ?
+        r = q(f"""SELECT count(DISTINCT src) AS n, sum(n) AS hits FROM r_src_1h WHERE {IN_DIR} AND policyid = ?
                  AND b >= ? AND b < ?""", (pid, hfrm, to), one=True)
         if r.get('hits'):
             few = r['n'] <= c.get('tighten_max_sources', 25)

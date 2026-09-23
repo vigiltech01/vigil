@@ -18,7 +18,7 @@ from .cef import parse, to_int, has_any
 from .ingest import LOG_BASE
 from .investigate import files_for, _window_offsets, pkey
 from .explorer import fid_path
-from .queries import q, floor, M5, H1, DAY
+from .queries import q, floor, IN_DIR, M5, H1, DAY
 from .threatkb import KB, PORT_CLASS, WELL_KNOWN
 
 ALLOW, DENY, UTM, THREAT = 0, 1, 2, 3
@@ -287,7 +287,7 @@ def reconstructed(frm, to):
 
     def ev(t, country, dpt, proto, app, v, pid, why=0, src='', attack=None):
         return [t, src, country or '', dpt or 0, proto or 0, app or '', v, pid, '', 0, attack, 0, why, None, None]
-    for r in q("""SELECT policyid, act, app, dpt, proto, country, sum(n) AS n FROM r_pol_5m WHERE dir = 'in' AND b = ?
+    for r in q(f"""SELECT policyid, act, app, dpt, proto, country, sum(n) AS n FROM r_pol_5m WHERE {IN_DIR} AND b = ?
                   GROUP BY 1, 2, 3, 4, 5, 6""", (b5,)):
         v = UTM if r['act'] == 'utm-block' else DENY if r['act'] == 'deny' else ALLOW
         why = (DENY_RULE if r['policyid'] else CLOSED) if v == DENY else 0
@@ -329,7 +329,7 @@ def timeline(frm, to):
     def slot(t):
         k = (t // step) * step
         return b.setdefault(k, [k, 0, 0, 0, 0])      # t, allowed, denied, blocked, threats
-    for r in q(f"""SELECT (b / {step}) * {step} AS t, act, sum(n) AS n FROM r_pol_5m WHERE dir = 'in' AND b >= ? AND b < ?
+    for r in q(f"""SELECT (b / {step}) * {step} AS t, act, sum(n) AS n FROM r_pol_5m WHERE {IN_DIR} AND b >= ? AND b < ?
                   GROUP BY 1, 2""", (floor(frm, M5), to)):
         s = slot(r['t'])
         if r['act'] == 'utm-block':

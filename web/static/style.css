@@ -10,15 +10,15 @@
   --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b; --threat: #9085e9;
   --good-bg: rgba(12,163,12,.13); --warning-bg: rgba(250,178,25,.12); --serious-bg: rgba(236,131,90,.13);
   --critical-bg: rgba(208,59,59,.15); --threat-bg: rgba(144,133,233,.14);
-  --radius: 18px; --radius-s: 12px;
+  --radius: 14px; --radius-s: 10px;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
-  --side-w: 76px; --top-h: 72px;
+  --side-w: 64px; --top-h: 58px;
   --ease: cubic-bezier(.2, .8, .2, 1);
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { margin: 0; background: var(--page); color: var(--ink); font: 13px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+html, body { margin: 0; background: var(--page); color: var(--ink); font: 12px/1.45 var(--font); -webkit-font-smoothing: antialiased; }
 a { color: var(--ink); text-decoration: none; }
 a:hover { color: #fff; }
 p a, .banner a, .note a, td a, .sub a { color: var(--blue-2); }
@@ -101,7 +101,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 }
 
 /* ---------- layout ---------- */
-main { padding: 24px 32px 56px; display: grid; gap: 16px; grid-template-columns: repeat(12, minmax(0, 1fr)); transition: opacity .25s var(--ease);
+main { padding: 16px 20px 36px; display: grid; gap: 12px; grid-template-columns: repeat(12, minmax(0, 1fr)); transition: opacity .25s var(--ease);
   max-width: 1800px; }
 main.loading { opacity: .55; }
 @media (max-width: 1080px) { main { padding: 16px; } }
@@ -110,12 +110,12 @@ main.loading { opacity: .55; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .card.w6 { grid-column: span 6; } .card.w4 { grid-column: span 4; } .card.w8 { grid-column: span 8; } .card.w3 { grid-column: span 3; }
 @media (max-width: 1280px) { .card.w6, .card.w4, .card.w8, .card.w3 { grid-column: span 12; } }
-.card > header { display: flex; align-items: center; gap: 8px; padding: 18px 20px 4px; flex-wrap: wrap; }
-.card > header h3 { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: -.005em; }
-.card > header .sub { color: var(--muted); font-size: 12px; flex-basis: 100%; order: 3; margin-top: 0; }
+.card > header { display: flex; align-items: center; gap: 8px; padding: 12px 14px 3px; flex-wrap: wrap; }
+.card > header h3 { margin: 0; font-size: 13px; font-weight: 500; letter-spacing: -.005em; }
+.card > header .sub { color: var(--muted); font-size: 11px; flex-basis: 100%; order: 3; margin-top: 0; }
 .card > header .tools { margin-left: auto; display: flex; gap: 6px; }
-.card > .body { padding: 10px 20px 18px; min-width: 0; }
-.chart { width: 100%; height: 260px; } .chart.tall { height: 440px; } .chart.short { height: 200px; }
+.card > .body { padding: 6px 14px 12px; min-width: 0; }
+.chart { width: 100%; height: 220px; } .chart.tall { height: 360px; } .chart.short { height: 170px; }
 .section-title { grid-column: span 12; display: flex; align-items: baseline; gap: 12px; margin: 14px 0 -2px; }
 .section-title h2 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .section-title p { margin: 0; color: var(--faint); font-size: 12px; }
@@ -195,7 +195,7 @@ tr.click { cursor: pointer; }
 tr.click:hover td { background: var(--hover); }
 .tbl-foot { display: flex; gap: 8px; align-items: center; padding: 10px 2px 0; color: var(--faint); font-size: 11.5px; }
 .tbl-foot button { padding: 3px 12px; font-size: 11.5px; }
-.empty { color: var(--muted); padding: 26px 4px; text-align: center; }
+.empty { color: var(--muted); padding: 14px 4px; text-align: center; }
 .err { color: #ff7b7b; padding: 10px 0; }
 
 /* ---------- skeleton ---------- */
@@ -580,3 +580,12 @@ ul.fix li::marker { color: var(--good); }
 .cf-done { padding: 18px; border-radius: 12px; background: var(--surface-2); line-height: 1.6; }
 .welcome > .wl-contact { grid-column: 1 / -1; }
 @media (max-width: 760px) { .cf-grid { grid-template-columns: 1fr; } }
+
+/* A card whose table found nothing: one quiet line instead of an empty table, so the page stays dense
+   but the analyst still sees that the check ran (set by table() unless the caller passes keepEmpty). */
+.card.quiet { background: transparent; border-style: dashed; border-color: var(--border); }
+.card.quiet > header { padding: 8px 12px 0; }
+.card.quiet > header h3 { font-size: 12px; color: var(--muted); font-weight: 400; }
+.card.quiet > header .sub, .card.quiet > header .tools, .card.quiet .tbl-foot { display: none; }
+.card.quiet > .body { padding: 0 12px 8px; }
+.card.quiet .empty { padding: 2px 0 4px; text-align: left; font-size: 11.5px; }
