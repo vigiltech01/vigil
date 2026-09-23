@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from . import rules as R
 from .queries import q, conf, floor, H1, DAY, M5, DROP_IN, IN_DIR_NOGEO
-from .threatkb import KB, AUTH_PORTS, SCAN_PORTS, BRUTE_SHORT_PER_HOUR, PORT_CLASS
+from .threatkb import KB, AUTH_PORTS, SCAN_PORTS, BRUTE_SHORT_PER_HOUR, PORT_CLASS, WELL_KNOWN
 
 LEVELS = ['critical', 'high', 'medium', 'low', 'good']
 
@@ -90,7 +90,7 @@ def detections(frm, to, model):
     out['bruteforce'] = brute
     # 4. denied first, then allowed in
     recon = q("""SELECT src, country, n_deny, n_acc, first_ts, first_acc_ts, last_acc_ts FROM seen_src
-                 WHERE last_acc_ts >= ? AND first_acc_ts < ? AND n_deny >= 5 AND first_ts < first_acc_ts
+                 WHERE src != '' AND last_acc_ts >= ? AND first_acc_ts < ? AND n_deny >= 5 AND first_ts < first_acc_ts
                  ORDER BY n_deny DESC LIMIT 25""", (frm, to))
     if recon:
         marks = ','.join('?' * len(recon))
@@ -145,12 +145,44 @@ def detections(frm, to, model):
     return out
 
 
+def _polname(pid):
+    if pid in (None, -1):
+        return None
+    return {0: 'implicit deny', 100_000: 'local-in implicit deny'}.get(pid) or f'policy {pid}'
+
+
+def entry_points(frm, to, limit=20):
+    """What the internet actually reached on this firewall, straight from the logs: destination, port, how many
+    sessions and sources, where from, how much was denied. Needs no configuration backup, and works on a firewall
+    that publishes nothing - there the destination is the firewall itself (SSL-VPN portal, admin, probed ports)."""
+    hfrm = floor(frm, H1)
+    rows = q("""SELECT dst, dpt, proto, sum(n) AS sessions, sum(drops) AS denied, sum(short) AS short,
+                       count(DISTINCT src) AS sources, sum(bytes) AS bytes, max(b) AS last, max(policyid) AS policyid
+                FROM r_in_1h WHERE b >= ? AND b < ? AND dst != '' GROUP BY 1, 2, 3
+                ORDER BY sessions DESC LIMIT ?""", (hfrm, to, limit))
+    if not rows:
+        return []
+    geo = defaultdict(lambda: defaultdict(int))
+    for r in q("""SELECT dst, dpt, country, sum(n) AS n FROM r_in_1h
+                  WHERE b >= ? AND b < ? AND country NOT IN ('', 'Reserved') GROUP BY 1, 2, 3""", (hfrm, to)):
+        geo[(r['dst'], r['dpt'])][r['country']] += r['n']
+    for r in rows:
+        cs = sorted(geo[(r['dst'], r['dpt'])].items(), key=lambda x: -x[1])
+        kb = KB.get(PORT_CLASS.get(r['dpt']) or '')
+        r['countries'] = [c for c, _ in cs[:4]]
+        r['country_count'] = len(cs)
+        r['service'] = (kb or {}).get('title') or WELL_KNOWN.get(r['dpt']) or f"port {r['dpt']}"
+        r['allowed'] = max(0, (r['sessions'] or 0) - (r['denied'] or 0))
+        r['policy'] = _polname(r['policyid'])
+    return rows
+
+
 def bundle(frm, to):
     """The slow, log-derived part of the page (cached and warmed)."""
     t0 = time.time()
     model = R.load()
     return {'frm': frm, 'to': to, 'ev': rule_evidence(frm, to), 'det': detections(frm, to, model),
-            'took_ms': int((time.time() - t0) * 1000)}
+            'entry_points': entry_points(frm, to), 'took_ms': int((time.time() - t0) * 1000)}
 
 
 def overview(frm, to):
@@ -217,7 +249,7 @@ def assemble(b, model):
                         'unused': sum(1 for r in accepts if r.get('unused')),
                         'servers': len(services), 'grade': _grade(accepts)},
             'priorities': priorities, 'rules': sorted(rules_out, key=lambda r: (r['action'] != 'accept', not r['enabled'], -r['score'])),
-            'detections': det, 'admin': admin}
+            'detections': det, 'admin': admin, 'entry_points': b.get('entry_points') or []}
 
 
 def _rule_sentence(a):

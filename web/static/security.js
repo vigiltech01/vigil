@@ -181,6 +181,22 @@ function secSummary() {
     {k: 'ips', t: 'IPS', f: v => v ? '<span class="pill good">✓</span>' : '<span class="pill bad">✕ none</span>'},
     {k: 'sessions', t: 'Sessions', num: true, f: fmtK}, {k: 'rule', t: 'Rule', f: (v, r) => `#${v} ${esc(r.name || '')}`}],
     exp, {onRow: r => openRule(r.rule), sort: {k: 'level', d: -1}, limit: 200});
+  // No rule publishes a server (branch / SD-WAN firewall): show what the internet actually reached instead of an
+  // empty table - on those firewalls the target is the firewall itself (SSL-VPN portal, admin, probed ports).
+  if (!exp.length && (d.entry_points || []).length) {
+    $('#sec-exp-sub').textContent = 'No rule publishes a server, so this is what the internet actually reached on this firewall, from the logs.';
+    table('sec-exp', [
+      {k: 'dst', t: 'Reached', mono: true},
+      {k: 'service', t: 'Service', f: (v, r) => `${esc(v)}<div class="muted" style="font-size:11px">port ${r.dpt}${r.proto === 17 ? '/udp' : ''}</div>`},
+      {k: 'sources', t: 'Sources', num: true, f: fmtK},
+      {k: 'countries', t: 'From', f: (v, r) => esc((v || []).join(', ') + (r.country_count > 4 ? ` +${r.country_count - 4}` : '')) || '—'},
+      {k: 'allowed', t: 'Allowed', num: true, f: fmtK},
+      {k: 'denied', t: 'Denied', num: true, f: (v) => v ? `<span class="drop">${fmtK(v)}</span>` : '0'},
+      {k: 'short', t: 'Short/failed', num: true, f: fmtK, tip: 'Very short sessions - typical of scans and failed logins'},
+      {k: 'policy', t: 'Matched', f: v => esc(v || '—')}],
+      d.entry_points, {onRow: r => location.hash = `#investigate?q=${encodeURIComponent(r.dst)}+port+${r.dpt}`,
+                       sort: {k: 'sessions', d: -1}, limit: 50, csv: 'entry-points'});
+  }
   const probes = det.probed_top || [];
   hbar('sec-probe-c', probes.map(r => Object.assign({}, r, {label: `${r.dpt} ${r.service ? '· ' + r.service : ''}`})), r => r.label, r => ({value: r.n, itemStyle: {color: r.exposed ? C.crit : C.s[0]}}),
     r => location.hash = `#investigate?q=port+${r.dpt}+denied`);

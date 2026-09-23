@@ -278,11 +278,11 @@ def inbound(frm, to):
                           WHERE b >= ? AND b < ? GROUP BY 1 ORDER BY n DESC LIMIT 25""", (tb, to))
     deny_src = q(f"""SELECT src, max(country) AS country, group_concat(DISTINCT inif) AS inif,
                     group_concat(DISTINCT policyid) AS policies, sum(n) AS n, max(ports) AS ports, max(psample) AS psample
-                    FROM {src_t} WHERE b >= ? AND b < ? GROUP BY src ORDER BY n DESC LIMIT 50""", (tb, to))
+                    FROM {src_t} WHERE b >= ? AND b < ? AND src != '' GROUP BY src ORDER BY n DESC LIMIT 50""", (tb, to))
     deny_port = q(f"""SELECT dpt, proto, group_concat(DISTINCT inif) AS inif, sum(n) AS n, max(srcs) AS srcs
                      FROM {port_t} WHERE b >= ? AND b < ? GROUP BY dpt, proto ORDER BY n DESC LIMIT 50""", (tb, to))
     new_src = q("""SELECT src, country, first_ts, first_acc_ts, last_ts, n_acc, n_deny FROM seen_src
-                   WHERE first_acc_ts >= ? AND first_acc_ts < ? ORDER BY first_acc_ts DESC LIMIT 200""", (frm, to))
+                   WHERE first_acc_ts >= ? AND first_acc_ts < ? AND src != '' ORDER BY first_acc_ts DESC LIMIT 200""", (frm, to))
     if new_src:
         pmap = {}
         marks = ','.join('?' * len(new_src))

@@ -328,8 +328,9 @@ class Ingest:
         self.r['r_deny_5m'][(ts - ts % M5, cat, inif, _i(pid))][0] += 1
         h = ts - ts % H1
         ks = (h, src, inif, _i(pid))
-        a = self.r['r_deny_src_1h'][ks]
-        a[0] += 1; a[4] = country
+        if src:                                       # a deny without a source address only counts in the port totals
+            a = self.r['r_deny_src_1h'][ks]
+            a[0] += 1; a[4] = country
         ports = self.deny_ports.setdefault(ks, set())
         if len(ports) < 32:
             ports.add(dpt)
@@ -342,6 +343,8 @@ class Ingest:
             self._seen(src, country, ts, False)
 
     def _seen(self, src, country, ts, accepted):
+        if not src:                                   # some local-in lines carry no srcip; they are counted, not listed
+            return
         s = self.seen_src.get(src)
         if s is None:
             s = self.seen_src[src] = [country, ts, ts, 0, 0, None, None]
