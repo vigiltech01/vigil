@@ -11,6 +11,9 @@
   now tries `ss`, `netstat`, the kernel tables in `/proc/net` and finally a real bind, never treats an unverifiable port as
   free, and if `docker compose up -d` still hits a used port it switches to the existing syslog file (or a free port) and
   retries once.
+- **Backfill progress.** While Vigil reads the log history already on the machine, the status shows how far it is and
+  roughly how long is left (`meta.backfill`, written by ingest every 30 s); the ingest log and the Connect checklist say
+  the same, and `install.sh` prints the size of the history and an estimate before you start waiting.
 - `install.sh` refreshes the container image (`docker compose pull`) before starting, so an image left from an earlier
   install is not silently reused - that could run a version older than the settings just written. `--no-pull` keeps it.
 - Ingest follows `copytruncate` log rotation; `VIGIL_BACKFILL_DAYS` limits how much old rotated syslog is read on first start.

@@ -97,6 +97,10 @@ docker compose up -d
 `docker compose up -d` pulls the published image (`ghcr.io/vigiltech01/vigil`). If the image is unavailable - for example on
 an offline network with a local mirror - build it yourself with `docker compose build`.
 
+First start reads the FortiGate logs already on the machine (about 1 GB per 15 minutes); the status at the top right shows
+the progress and the time left, and the pages fill in as it goes. `VIGIL_BACKFILL_DAYS` controls how much rotated history
+is read (default: 1 day for an existing syslog file).
+
 Open `http://<host>:8080`. The first visitor creates the administrator account, so do this right after installing - or set
 `VIGIL_ADMIN_USER` and `VIGIL_ADMIN_PASSWORD` in `.env` before the first start.
 

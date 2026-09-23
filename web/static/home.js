@@ -160,6 +160,10 @@ end`;
       const rc = st.receiver || {};
       const senders = rc.senders || [];
       const fresh = inp.age_s != null && inp.age_s < 300;
+      const bf = meta.backfill;
+      const bfStep = [!bf || !bf.active, 'History read', bf && bf.active
+        ? `${bf.percent}% of the logs already on this machine${bf.eta_text ? `, about ${bf.eta_text} left` : ''} - the pages fill in as it goes`
+        : 'everything on disk has been read; new logs appear within seconds'];
       const steps = fileMode ? [
         [true, 'Vigil is running', `Web UI up, account “${st.account.user || 'local'}” ready`],
         [inp.exists && inp.readable, 'Reading the existing syslog file', !inp.exists
@@ -167,12 +171,14 @@ end`;
           : inp.readable ? `${inp.file} on this machine, read-only` : `${inp.file} exists but Vigil is not allowed to read it - see the install guide, “Existing syslog server”`],
         [inp.readable && fresh, 'Log file is growing', inp.age_s != null ? `last written ${ago(inp.mtime)} ago` : 'waiting for the file'],
         [!!meta.last_event_ts, 'FortiGate logs recognised', meta.last_event_ts ? `newest log ${ago(meta.last_event_ts)} ago from ${(meta.firewall || {}).name || 'your FortiGate'}` : fresh ? 'the file is growing but no FortiGate lines yet - is the firewall sending to this machine?' : 'after the file receives FortiGate logs'],
+        bfStep,
         [!!st.config.loaded, 'Configuration backup (optional)', st.config.loaded ? `${st.config.policies} policies from ${st.config.file}` : 'not uploaded - rule grading is off'],
       ] : [
         [true, 'Vigil is running', `Web UI up, account “${st.account.user || 'local'}” ready`],
         [!!rc.started, 'Syslog receiver listening', rc.started ? `UDP and TCP port ${port} on this machine` : 'starting…'],
         [senders.length > 0, 'Syslog arriving', senders.length ? `${fmtN(rc.messages)} messages from ${senders.map(s => s.ip).slice(0, 3).join(', ')}` : 'waiting for the first message - check the commands and any firewall between the FortiGate and this machine'],
         [!!meta.last_event_ts, 'FortiGate logs recognised', meta.last_event_ts ? `newest log ${ago(meta.last_event_ts)} ago from ${(meta.firewall || {}).name || 'your FortiGate'}` : senders.length ? 'messages arrive but none look like FortiGate logs yet' : 'after syslog arrives'],
+        bfStep,
         [!!st.config.loaded, 'Configuration backup (optional)', st.config.loaded ? `${st.config.policies} policies from ${st.config.file}` : 'not uploaded - rule grading is off'],
       ];
       const firstOpen = steps.findIndex(s => !s[0]);

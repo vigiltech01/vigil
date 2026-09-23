@@ -155,8 +155,17 @@ function liveStatus() {
   pill.classList.toggle('demo', !!S.meta.demo);
   pill.querySelector('.dot').className = 'dot ' + (none ? 'wait' : lag < 120 ? 'live' : 'lag');
   const name = (S.meta.firewall && S.meta.firewall.name) || 'FortiGate';
-  $('#live-text').textContent = none ? 'Waiting for logs' : (S.meta.demo ? 'Demo · ' : '') + (lag < 120 ? `${name} · live` : `${name} · last log ${ago(S.meta.last_event_ts)} ago`);
-  pill.title = none ? 'No FortiGate logs received yet - see Connect a FortiGate' : `Newest log ${Math.max(0, Math.round(lag))} s ago`;
+  const bf = S.meta.backfill;
+  if (bf && bf.active) {          // still reading the log files on disk: show how far it is and how long is left
+    pill.querySelector('.dot').className = 'dot wait';
+    $('#live-text').textContent = `Reading history · ${bf.percent}%` + (bf.eta_text ? ` · ~${bf.eta_text} left` : '');
+    pill.title = `Reading the FortiGate logs already on this machine: ${fmtB(bf.done)} of ${fmtB(bf.total)}`
+      + (bf.reading ? ` (${bf.reading})` : '') + (bf.rate ? ` at ${fmtB(bf.rate)}/s` : '')
+      + '. Pages fill in as this progresses; once it finishes, new logs appear within seconds.';
+  } else {
+    $('#live-text').textContent = none ? 'Waiting for logs' : (S.meta.demo ? 'Demo · ' : '') + (lag < 120 ? `${name} · live` : `${name} · last log ${ago(S.meta.last_event_ts)} ago`);
+    pill.title = none ? 'No FortiGate logs received yet - see Connect a FortiGate' : `Newest log ${Math.max(0, Math.round(lag))} s ago`;
+  }
   const dl = document.querySelector('#nav .dot-live');
   if (dl) dl.hidden = none || lag > 120;
   $('#rangeinfo').textContent = S.generated && isFinite(S.generated) ? `Updated ${ago(S.generated)} ago` : '';

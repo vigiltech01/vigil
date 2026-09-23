@@ -193,6 +193,24 @@ env_set() {   # set KEY=VALUE in .env (replacing an existing or commented-out li
     printf '%s=%s\n' "$k" "$v" >> .env
   fi
 }
+backfill_estimate() {   # how much history is on disk, and roughly how long reading it takes (~1.2 MB/s per core)
+  local days=${VIGIL_BACKFILL_DAYS:-1} total=0 files=0 sz f
+  for f in "$LOG_FILE" "$LOG_FILE".[0-9] "$LOG_FILE".[0-9].gz "$LOG_FILE".[0-9][0-9] "$LOG_FILE".[0-9][0-9].gz; do
+    [ -e "$f" ] || continue
+    [ "$f" != "$LOG_FILE" ] && [ "$days" != 0 ] && [ -n "$(find "$f" -mtime "+$days" 2>/dev/null)" ] && continue
+    sz=$(priv stat -c %s "$f" 2>/dev/null) || continue
+    case "$f" in *.gz) sz=$((sz * 8)) ;; esac            # compressed: estimate the uncompressed size
+    total=$((total + sz)); files=$((files + 1))
+  done
+  [ "$total" -gt 0 ] || return 0
+  local gb mins
+  gb=$(awk -v b="$total" 'BEGIN { printf "%.1f", b / 1073741824 }')
+  mins=$(awk -v b="$total" 'BEGIN { printf "%d", (b / 1258291) / 60 + 0.5 }')     # ~1.2 MB/s
+  say "History already on this machine: ${B}${gb} GB${N} in $files file(s) - reading it takes roughly ${B}${mins} min${N}."
+  say "  The pages fill in while it runs; the status at the top right shows the progress and the time left."
+  say "  Only the last $days day(s) of rotated files are read - set VIGIL_BACKFILL_DAYS in .env for more history."
+}
+
 write_input_env() {   # log-source settings, written the same way on the first attempt and on a retry
   env_set VIGIL_INPUT "$MODE"
   env_set VIGIL_SYSLOG_PORT "$SYSLOG_PORT"
@@ -337,6 +355,7 @@ say ""
 say "${B}Open http://${ip:-<this-host>}:$http${N} and create the administrator account."
 if [ "$MODE" = file ]; then
   say "Vigil reads $LOG_FILE - no change is needed on the FortiGate."
+  backfill_estimate
 else
   say "Then point the FortiGate at this machine, port $SYSLOG_PORT (the page shows the exact commands)."
 fi

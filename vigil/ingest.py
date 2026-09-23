@@ -107,6 +107,65 @@ def log_files():
     return [p for _, p in sorted(rot, reverse=True)] + [LOG_BASE]
 
 
+# ---- backfill progress: how much of the history is read, and how long the rest will take -------------------------
+GZ_RATIO = 8                      # rough uncompressed:compressed ratio of syslog text, for size estimates only
+
+
+def _skip_old(path):
+    """Rotated files older than VIGIL_BACKFILL_DAYS are never read, so they must not count towards the total."""
+    if path == LOG_BASE or settings.BACKFILL_DAYS <= 0:
+        return False
+    try:
+        return os.path.getmtime(path) < time.time() - settings.BACKFILL_DAYS * 86400
+    except OSError:
+        return True
+
+
+def backfill_status(rows, rate=None):
+    """rows: (path, off, done) from the files table -> bytes read / to read, percent and seconds left."""
+    sizes = {}
+    for p in log_files():
+        if _skip_old(p):
+            continue
+        try:
+            sizes[p] = os.path.getsize(p) * (GZ_RATIO if p.endswith('.gz') else 1)
+        except OSError:
+            continue
+    seen = {r[0]: r for r in rows}
+    done = 0
+    for p, size in sizes.items():
+        r = seen.get(p)
+        if not r:
+            continue
+        done += size if r[2] else min(size, r[1] or 0)      # r[1] is the byte offset, uncompressed for .gz too
+    total = sum(sizes.values())
+    left = max(0, total - done)
+    return {'done': done, 'total': total, 'left_bytes': left, 'files': len(sizes),
+            'percent': round(100 * done / total, 1) if total else 100.0,
+            'eta_s': int(left / rate) if rate and rate > 0 and left else (0 if not left else None)}
+
+
+def human_duration(seconds):
+    if seconds is None:
+        return 'unknown'
+    if seconds < 90:
+        return f'{max(1, int(seconds))} s'
+    if seconds < 5400:
+        return f'{round(seconds / 60)} min'
+    return f'{seconds / 3600:.1f} h'
+
+
+def backfill_left(con, rate):
+    """Short note for the ingest log line; empty once everything on disk has been read."""
+    try:
+        st = backfill_status(con.execute('SELECT path, off, done FROM files').fetchall(), rate)
+    except Exception:                                        # progress reporting must never break ingest
+        return ''
+    if st['left_bytes'] < 4 << 20 or not st['eta_s']:
+        return ''
+    return f"{st['percent']:.0f}% read, about {human_duration(st['eta_s'])} left"
+
+
 class Ingest:
     def __init__(self, con):
         self.con = con
@@ -397,6 +456,12 @@ class Ingest:
         for acc in self.r.values():
             acc.clear()
         self.seen_src.clear(); self.seen_dom.clear(); self.hosts.clear(); self.pol_dirty.clear()
+
+    def note_progress(self, path, off, rate):
+        """Publish where ingest is and how fast, so the UI can show backfill progress and a time estimate."""
+        self.con.execute("INSERT OR REPLACE INTO meta VALUES ('ingest_progress', ?)",
+                         (json.dumps({'path': path, 'off': off, 'rate': round(rate), 'lines': self.lines,
+                                      'at': int(time.time() * 1000)}),))
         self.inb.clear(); self.web.clear()
         # hourly distinct sets: keep only the current and previous hour
         cut = self.max_ts - self.max_ts % H1 - H1
@@ -476,7 +541,7 @@ def ingest_file(con, ing, path, fid, off, follow, batch, on_idle=lambda: None):
         else:
             fh.seek(off)
     pending, lines, idx, first_ts = b'', 0, [], None
-    last_commit, last_note, rotated_at = time.time(), time.time(), None
+    last_commit, last_note, rotated_at, last_off = time.time(), time.time(), None, off
     try:
         while not _stop:
             raw = fh.readline()
@@ -494,9 +559,14 @@ def ingest_file(con, ing, path, fid, off, follow, batch, on_idle=lambda: None):
                     ing.flush(fid, off, lines, idx, first_ts)
                     lines, idx, last_commit = 0, [], time.time()
                 if time.time() - last_note > 30:
-                    log.info('%s: %d lines total, at %s', path, ing.lines,
-                             time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(ing.max_ts / 1000)))
-                    last_note = time.time()
+                    now_t = time.time()
+                    rate = (off - last_off) / max(0.001, now_t - last_note)      # bytes/s over the last half minute
+                    ing.note_progress(path, off, rate)
+                    left = backfill_left(ing.con, rate)
+                    log.info('%s: %d lines total, at %s (%.1f MB/s)%s', path, ing.lines,
+                             time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(ing.max_ts / 1000)),
+                             rate / 2**20, f' - history {left}' if left else '')
+                    last_note, last_off = now_t, off
                 continue
             pending += raw                    # partial line at EOF: keep, wait for the rest
             if not follow:

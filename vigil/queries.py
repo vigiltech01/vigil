@@ -160,12 +160,30 @@ def floor(ts, step):
 
 
 # ---------------------------------------------------------------- meta
+def backfill(m):
+    """How much of the log history on disk ingest has read, and how long the rest takes at the current speed.
+    active = history is still being read; the dashboard keeps filling in while it is."""
+    from . import ingest
+    try:
+        p = json.loads(m.get('ingest_progress') or '{}')
+        fresh = p.get('at', 0) > (time.time() - 120) * 1000        # ingest reported within the last two minutes
+        rows = [(r['path'], r['off'], r['done']) for r in q('SELECT path, off, done FROM files')]
+        st = ingest.backfill_status(rows, p.get('rate') if fresh else None)
+    except Exception:                                              # progress must never break the meta call
+        return None
+    st['active'] = st['left_bytes'] > 4 << 20
+    st['rate'] = p.get('rate') if fresh else None
+    st['eta_text'] = ingest.human_duration(st['eta_s']) if st['active'] and st['eta_s'] else None
+    st['reading'] = os.path.basename(p.get('path') or '') if fresh else None
+    return st
+
+
 def meta():
     m = {r['k']: r['v'] for r in q('SELECT k, v FROM meta')}
     pols = q('SELECT policyid, name, ptype, dir, applists, first_ts, last_ts FROM policy ORDER BY policyid')
     c = conf()
     return {'now': int(time.time() * 1000), 'last_event_ts': int(m.get('last_event_ts', 0) or 0),
-            'last_commit': int(m.get('last_commit', 0) or 0), 'policies': pols,
+            'last_commit': int(m.get('last_commit', 0) or 0), 'policies': pols, 'backfill': backfill(m),
             'expected': {str(k): sorted(v) for k, v in c['_expected'].items()},
             'deny_policies': c.get('deny_policies', []), 'og_list_loaded': c['_og'] is not None,
             'firewall': c['firewall'], 'demo': settings.DEMO}
