@@ -77,9 +77,13 @@ port:
 | Port 514 is free | Vigil's built-in syslog receiver on 514 (`VIGIL_INPUT=receiver`) |
 | Port 514 is taken by a syslog server (rsyslog, syslog-ng…) **and FortiGate logs are being written to a file** | Vigil reads that file read-only; the syslog server and the FortiGate are not touched (`VIGIL_INPUT=file`) - see [Existing syslog server](#existing-syslog-server-port-514-in-use) |
 | Port 514 is taken, no FortiGate logs found | The built-in receiver on a free port (5514); the FortiGate then needs `set port 5514` |
+| Whether 514 is taken cannot be determined (no usable `ss`, `netstat`, `/proc/net` or `python3`) | It looks for a FortiGate log file first and never assumes the port is free |
 
-It writes the result to `.env`, runs `docker compose up -d` and waits until Vigil is healthy. Useful options:
-`--dry-run` (only show what it would configure), `--yes` (no questions), `--log-file /path/to/file` (skip detection),
+It writes the result to `.env`, runs `docker compose up -d` and waits until Vigil is healthy. The port check uses whatever
+the machine offers - `ss`, `netstat`, the kernel tables in `/proc/net`, or a real bind - and if the container still fails
+with *"address already in use"*, the installer reconfigures itself (existing log file, or another port) and retries once.
+
+Useful options: `--dry-run` (only show what it would configure), `--yes` (no questions), `--log-file /path/to/file` (skip detection),
 `--receiver` (always use the built-in receiver), `--port N` (the FortiGate sends to a port other than 514).
 
 **Manual install** (same result on a machine where port 514 is free):

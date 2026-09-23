@@ -8,7 +8,10 @@
 #                                         -> Vigil reads that file read-only, the existing server keeps working
 #                                            (VIGIL_INPUT=file) - nothing on the FortiGate or the syslog server changes
 #      * port 514 used by something else  -> built-in receiver on another port (FortiGate needs `set port <n>`)
-# 3. writes the choice to .env and runs `docker compose up -d`
+#    The check uses ss, netstat, /proc/net or a real bind - whatever this machine has. A port that cannot be checked
+#    is never treated as free.
+# 3. writes the choice to .env and runs `docker compose up -d`; should Docker still report "address already in use",
+#    the installer reconfigures itself (existing log file, or another port) and retries once
 #
 # Options:
 #   -y, --yes            do not ask, accept the detected setup
@@ -31,7 +34,7 @@ while [ $# -gt 0 ]; do
     --log-file) LOG_FILE=$2; shift ;;
     --receiver) FORCE_RECEIVER=1 ;;
     --scan-dir) SCAN_DIR=$2; shift ;;
-    -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,/^set -euo/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option: $1 (see ./install.sh --help)"; exit 2 ;;
   esac
   shift
@@ -81,13 +84,74 @@ if [ $DRY = 0 ]; then
 fi
 
 # ---- helpers -----------------------------------------------------------------------------------------------------
-port_in_use() {   # something listens on UDP or TCP port $1 (no privileges needed)
-  local p=$1
-  if command -v ss >/dev/null 2>&1; then
-    { ss -H -lnu "sport = :$p"; ss -H -lnt "sport = :$p"; } 2>/dev/null | grep -q .
+# Is UDP or TCP port $1 taken? -> 0 = in use, 1 = free, 2 = could not tell.
+# Several methods, because none of them works everywhere: ss/netstat can be missing or too old for the filter syntax
+# (some builds have no "-H"), /proc/net needs no tool at all, and binding the port is exactly what Docker does.
+# A port that cannot be checked is never called free - that assumption is what let the container fail later with
+# "failed to bind host port 0.0.0.0:514: address already in use".
+PORT_CHECK_METHOD=""
+port_listed() {   # 0 = found in a listener table, 1 = tables read but port absent, 2 = no table could be read
+  local p=$1 out="" found=1 read_any=1 f line hexport st rows first
+  if command -v ss >/dev/null 2>&1 && out=$(ss -lnut 2>/dev/null) && [ -n "$out" ]; then
+    PORT_CHECK_METHOD=ss
+  elif command -v netstat >/dev/null 2>&1 && out=$(netstat -lnut 2>/dev/null) && [ -n "$out" ]; then
+    PORT_CHECK_METHOD=netstat
   else
-    netstat -lnut 2>/dev/null | awk '{print $4}' | grep -qE "[:.]$p\$"
+    out=""
   fi
+  # both tools put the local address in column 4 ("0.0.0.0:514", "[::]:514", "*:514")
+  [ -n "$out" ] && printf '%s\n' "$out" | awk 'NR > 1 { print $4 }' | grep -qE "[:.]$p\$" && return 0
+  # kernel tables: "sl local_address rem_address st ..." with the port in hex; 0A = TCP listening
+  for f in /proc/net/tcp /proc/net/tcp6 /proc/net/udp /proc/net/udp6; do
+    [ -r "$f" ] || continue
+    rows=0; first=1
+    while read -r _ line _ st _; do          # read with bash only: no tail/awk needed, so a bare PATH still works
+      if [ "$first" = 1 ]; then first=0; continue; fi         # header row
+      rows=$((rows + 1))
+      hexport=${line##*:}
+      [ "$hexport" = "$line" ] && continue
+      case $hexport in *[!0-9A-Fa-f]*|"") continue ;; esac
+      case "$f" in *tcp*) [ "$st" = 0A ] || continue ;; esac  # 0A = listening; UDP sockets are all "open"
+      [ "$((16#$hexport))" = "$p" ] && { found=0; break; }
+    done < "$f"
+    [ "$rows" -gt 0 ] && read_any=0          # only a table we really read counts as evidence
+    [ $found = 0 ] && break
+  done
+  if [ $found = 0 ]; then
+    [ -n "$PORT_CHECK_METHOD" ] || PORT_CHECK_METHOD=/proc/net
+    return 0
+  fi
+  [ -n "$out" ] && return 1
+  [ $read_any = 0 ] && { PORT_CHECK_METHOD=/proc/net; return 1; }
+  return 2
+}
+port_bind_test() {   # 0 = in use, 1 = free (or only root may bind it), 2 = cannot test
+  command -v python3 >/dev/null 2>&1 || return 2
+  python3 - "$1" >/dev/null 2>&1 <<'PY'
+import errno, socket, sys
+port, busy = int(sys.argv[1]), False
+for typ in (socket.SOCK_DGRAM, socket.SOCK_STREAM):
+    s = socket.socket(socket.AF_INET, typ)
+    try:
+        s.bind(('0.0.0.0', port))              # no SO_REUSEADDR: bind exactly like Docker's port proxy
+    except OSError as e:
+        busy = busy or e.errno == errno.EADDRINUSE     # EACCES only means "not root" - the port itself is free
+    finally:
+        s.close()
+sys.exit(3 if busy else 0)
+PY
+  case $? in 3) return 0 ;; 0) return 1 ;; *) return 2 ;; esac
+}
+port_in_use() {
+  local p=$1 rc
+  port_listed "$p"; rc=$?
+  [ $rc = 0 ] && return 0
+  port_bind_test "$p"
+  case $? in
+    0) PORT_CHECK_METHOD=bind; return 0 ;;
+    1) [ $rc = 2 ] && PORT_CHECK_METHOD=bind; return 1 ;;
+    *) return "$rc" ;;
+  esac
 }
 port_owners() {   # names of the processes on port $1, e.g. "rsyslogd" (needs sudo to see other users' sockets)
   command -v ss >/dev/null 2>&1 || return 0
@@ -99,8 +163,11 @@ vigil_owns_port() {   # the running Vigil container itself publishes the port (r
   "${DOCKER[@]}" ps --filter name='^vigil$' --format '{{.Ports}}' 2>/dev/null | grep -qE "[:.]$1->5514"
 }
 free_port() {
-  local p
-  for p in 5514 15514 25514 35514; do port_in_use "$p" || { echo "$p"; return; }; done
+  local p st
+  for p in 5514 15514 25514 35514; do
+    st=0; port_in_use "$p" || st=$?
+    [ "$st" = 1 ] && { echo "$p"; return; }        # only a port proven free
+  done
   echo 45514
 }
 FORTI_RE='CEF: ?0\|Fortinet\|Forti|logid="?[0-9]{10}"? '
@@ -124,43 +191,61 @@ env_set() {   # set KEY=VALUE in .env (replacing an existing or commented-out li
     printf '%s=%s\n' "$k" "$v" >> .env
   fi
 }
+write_input_env() {   # log-source settings, written the same way on the first attempt and on a retry
+  env_set VIGIL_INPUT "$MODE"
+  env_set VIGIL_SYSLOG_PORT "$SYSLOG_PORT"
+  if [ "$MODE" = file ]; then
+    env_set VIGIL_HOST_LOG_DIR "$(dirname "$LOG_FILE")"
+    env_set VIGIL_LOG_NAME "$(basename "$LOG_FILE")"
+    env_set VIGIL_HOST_LOG_GID "$GID"
+    env_set VIGIL_HOST_SYSLOG_PORT "$PORT"
+  fi
+}
 
 # ---- 2. how do logs reach Vigil? -----------------------------------------------------------------------------------
+use_existing_syslog() {   # port $PORT is taken (or unverifiable): prefer reading the file the other server writes
+  say "Looking for FortiGate logs that the existing syslog server writes under $SCAN_DIR ..."
+  found=$(find_forti_file || true)
+  if [ -n "$found" ]; then
+    LOG_FILE=${found#* }
+    ok "found ${found%% *} FortiGate log lines in the last 2 MB of ${B}$LOG_FILE${N}"
+    say "  The FortiGate is already integrated with this machine. Vigil will read this file read-only;"
+    say "  the existing syslog server and the FortiGate stay exactly as they are."
+    if ask "Use $LOG_FILE?"; then MODE=file; else LOG_FILE=""; fi
+  else
+    warn "no FortiGate log lines found in files written during the last 30 minutes under $SCAN_DIR"
+  fi
+  if [ "$MODE" != file ]; then
+    SYSLOG_PORT=$(free_port)
+    say "  Vigil's own receiver will listen on port ${B}$SYSLOG_PORT${N} instead (on the FortiGate: set port $SYSLOG_PORT)."
+    say "  If the FortiGate logs are in a file this script did not find: ./install.sh --log-file /path/to/file"
+    ask "Continue with the built-in receiver on port $SYSLOG_PORT?" || die "stopped - nothing was changed"
+  fi
+}
+
 MODE=receiver; SYSLOG_PORT=$PORT
+PORT_STATE=0; port_in_use "$PORT" || PORT_STATE=$?
 if [ -n "$LOG_FILE" ]; then
   MODE=file
 elif [ $FORCE_RECEIVER = 1 ]; then
   MODE=receiver
-elif port_in_use "$PORT"; then
+elif [ "$PORT_STATE" = 0 ]; then
   if vigil_owns_port "$PORT"; then
     ok "port $PORT is already published by the running Vigil container"
   else
     owners=$(port_owners "$PORT")
-    say "Port $PORT is already in use on this machine${owners:+ by ${B}${owners}${N}}."
-    say "Looking for FortiGate logs that the existing syslog server writes under $SCAN_DIR ..."
-    found=$(find_forti_file || true)
-    if [ -n "$found" ]; then
-      LOG_FILE=${found#* }
-      ok "found ${found%% *} FortiGate log lines in the last 2 MB of ${B}$LOG_FILE${N}"
-      say "  The FortiGate is already integrated with this machine. Vigil will read this file read-only;"
-      say "  the existing syslog server and the FortiGate stay exactly as they are."
-      if ask "Use $LOG_FILE?"; then MODE=file; else LOG_FILE=""; fi
-    else
-      warn "no FortiGate log lines found in files written during the last 30 minutes under $SCAN_DIR"
-    fi
-    if [ "$MODE" != file ]; then
-      SYSLOG_PORT=$(free_port)
-      say "  Vigil's own receiver will listen on port ${B}$SYSLOG_PORT${N} instead (on the FortiGate: set port $SYSLOG_PORT)."
-      say "  If the FortiGate logs are in a file this script did not find: ./install.sh --log-file /path/to/file"
-      ask "Continue with the built-in receiver on port $SYSLOG_PORT?" || die "stopped - nothing was changed"
-    fi
+    say "Port $PORT is already in use on this machine${owners:+ by ${B}${owners}${N}} (detected via $PORT_CHECK_METHOD)."
+    use_existing_syslog
   fi
+elif [ "$PORT_STATE" = 2 ]; then
+  warn "could not check whether port $PORT is in use (no usable ss, netstat, /proc/net or python3 here)"
+  use_existing_syslog
 else
   ok "port $PORT is free - Vigil's built-in receiver will listen on it"
 fi
 
 GID=4
-if [ "$MODE" = file ]; then
+prepare_file_mode() {   # can the container read the chosen file? sets GID and keeps the receiver off the host's port
   priv test -f "$LOG_FILE" || die "$LOG_FILE does not exist"
   LOG_FILE=$(readlink -f "$LOG_FILE")
   read -r fgid fmode < <(priv stat -c '%g %a' "$LOG_FILE")
@@ -184,23 +269,51 @@ if [ "$MODE" = file ]; then
     say  "  Fix: sudo chmod o+rx $(dirname "$LOG_FILE")   or put the syslog file in a directory readable by group $GID"
   fi
   SYSLOG_PORT=$(free_port)                       # keep the container's receiver port off the one the host server uses
-fi
+}
+if [ "$MODE" = file ]; then prepare_file_mode; fi
 
 # ---- 3. write .env and start ---------------------------------------------------------------------------------------
 [ $DRY = 1 ] && say "Would write to .env:"
-env_set VIGIL_INPUT "$MODE"
-env_set VIGIL_SYSLOG_PORT "$SYSLOG_PORT"
-if [ "$MODE" = file ]; then
-  env_set VIGIL_HOST_LOG_DIR "$(dirname "$LOG_FILE")"
-  env_set VIGIL_LOG_NAME "$(basename "$LOG_FILE")"
-  env_set VIGIL_HOST_LOG_GID "$GID"
-  env_set VIGIL_HOST_SYSLOG_PORT "$PORT"
-fi
+write_input_env
 [ $DRY = 1 ] && exit 0
 ok "settings saved in .env ($MODE input)"
 [ $START = 1 ] || { say "Start later with: docker compose up -d"; exit 0; }
 
-"${DOCKER[@]}" compose up -d
+OUT=$(mktemp); trap 'rm -f "$OUT"' EXIT
+start_stack() {
+  local rc
+  set +e
+  "${DOCKER[@]}" compose up -d 2>&1 | tee "$OUT"
+  rc=${PIPESTATUS[0]}
+  set -e
+  return "$rc"
+}
+HTTP_PORT=$(grep -E '^VIGIL_HTTP_PORT=' .env 2>/dev/null | cut -d= -f2); HTTP_PORT=${HTTP_PORT:-8080}
+if ! start_stack; then
+  # Last safety net: a port looked free but the bind failed anyway (a listener no check could see, another
+  # container, or something that started in between) - reconfigure instead of leaving a half-finished install.
+  if grep -qiE 'address already in use|port is already allocated' "$OUT"; then
+    busy=$(grep -oE '(0\.0\.0\.0|\[::\]|host port [0-9.]*):[0-9]+' "$OUT" | grep -oE '[0-9]+$' | head -1)
+    busy=${busy:-$SYSLOG_PORT}
+    warn "port $busy is in use after all - reconfiguring and retrying"
+    if [ "$busy" = "$HTTP_PORT" ]; then
+      for p in 8081 8088 8090 9090 18080; do
+        st=0; port_in_use "$p" || st=$?
+        [ "$st" = 1 ] && { HTTP_PORT=$p; break; }
+      done
+      env_set VIGIL_HTTP_PORT "$HTTP_PORT"
+      say "  the web port was taken - Vigil's UI will listen on ${B}$HTTP_PORT${N}"
+    else
+      MODE=receiver; LOG_FILE=""
+      use_existing_syslog                       # prefers the existing syslog file, else a free receiver port
+      if [ "$MODE" = file ]; then prepare_file_mode; fi
+      write_input_env
+    fi
+    start_stack || die "could not start Vigil - see the output above and docs/TROUBLESHOOTING.md"
+  else
+    die "could not start Vigil - see the output above and docs/TROUBLESHOOTING.md"
+  fi
+fi
 say "Waiting for Vigil to become healthy ..."
 for _ in $(seq 40); do
   st=$("${DOCKER[@]}" inspect -f '{{.State.Health.Status}}' vigil 2>/dev/null || true)

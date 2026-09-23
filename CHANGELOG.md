@@ -6,6 +6,11 @@
   already receives the FortiGate with rsyslog/syslog-ng (port 514 taken), Vigil reads that log file and its rotations
   read-only (`VIGIL_INPUT=file`) instead of failing with "address already in use"; the syslog server and the FortiGate are
   left unchanged. Health, Settings and the Connect checklist show the file source.
+- **Fixed:** `install.sh` could report "port 514 is free" on machines where its `ss` call did not work (missing tool, older
+  `ss` without `-H`, or a restricted `PATH`), and the container then failed with "address already in use". The port check
+  now tries `ss`, `netstat`, the kernel tables in `/proc/net` and finally a real bind, never treats an unverifiable port as
+  free, and if `docker compose up -d` still hits a used port it switches to the existing syslog file (or a free port) and
+  retries once.
 - Ingest follows `copytruncate` log rotation; `VIGIL_BACKFILL_DAYS` limits how much old rotated syslog is read on first start.
 - Docs: installing Docker with the Compose v2 plugin, and a troubleshooting table for common Docker install errors.
 
