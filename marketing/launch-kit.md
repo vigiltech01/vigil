@@ -131,3 +131,63 @@ technical write-ups that stand alone and mention Vigil once. This is what keeps 
 - Never argue with criticism; ship the fix and say you did.
 - No sock puppets, no asking friends to upvote, no DMs to strangers. One ban ends the launch.
 - Never paste a real firewall's name, IP, rule name or log line. Demo mode only.
+
+---
+
+## Fortinet Community (community.fortinet.com) - the careful one
+
+Their rules decide the approach, not our preference:
+
+- Community Guidelines: *"Solicitations are rarely relevant. If you have something you want members to join,
+  participate in, or buy, ask us first."*
+- Terms of Service: no *"promotions of your own business and brands such as promotions, self-promotion, spam, and
+  irrelevant links to third party sites."*
+
+So: **ask first, then contribute, and let the tool come up because it answers someone's question.** One removed post
+on the vendor's own platform costs more than every upvote elsewhere.
+
+Wrong group to start in: **FortiSIEM**. Those members already own a SIEM; a free dashboard "for sites without one"
+reads as a competitor pitch in Fortinet's house. The FortiGate / general support forums are where people ask the
+question Vigil answers ("how do I see what is hitting my WAN interface without FortiAnalyzer?").
+
+### Step 1 - email community@fortinet.com before posting
+
+> Subject: Permission to share an open-source FortiGate log dashboard with the community
+>
+> Hello,
+>
+> I maintain an open-source (Apache-2.0) self-hosted dashboard for FortiGate syslog, and I would like to share it
+> with the community in a way that fits your guidelines, which ask that I check with you first.
+>
+> What it is: one container that reads FortiOS syslog (CEF and the default key=value format), shows inbound activity,
+> attack detections and a rule review from an uploaded configuration backup. It is free, has no paid tier, collects
+> no telemetry and is not a FortiAnalyzer or FortiSIEM replacement - it is aimed at sites that do not have those.
+>
+> May I (a) post a technical write-up in the FortiGate forum with a link to the GitHub repository, or (b) answer
+> relevant threads and link to it only where it answers the question, or (c) neither? I will follow whichever you
+> prefer, and I am happy to send the write-up for review first.
+>
+> Repository: https://github.com/vigiltech01/vigil
+>
+> Thank you,
+> <name>
+
+### Step 2 - while you wait, earn the right to be heard
+
+Answer questions with no link at all. Ten good answers make the eleventh post welcome. Search the forums for:
+`syslog`, `logging to a server`, `log disk full`, `FortiAnalyzer alternative`, `see blocked traffic`,
+`brute force SSL-VPN`, `who is scanning my WAN`.
+
+Useful answers you can already give from this project's work, no product mention required:
+
+- The syslog header carries local time labelled `+00:00` on several models - use `FTNTFGTeventtime` (nanoseconds).
+- Config changes are logged as `logid 0100044547` with `cfgpath`, `cfgobj` and `cfgattr` showing `old->new`, so an
+  audit trail already exists without any extra tooling.
+- App-control verdicts are `act=pass|block` and the application name is `FTNTFGTapp`; the CEF `app=` field is the
+  service label, which is the usual reason a filter "does not match".
+- A UTM-killed session shows `client-rst`/`close` plus `FTNTFGTutmaction=block`, not `act=deny`.
+
+### Step 3 - if they say yes
+
+A technical write-up, not an advert: "What a FortiGate's YAML backup actually contains (and why most YAML parsers
+choke on it)" or "Reading 1.2 GB of FortiGate syslog a day on one small VM". The tool is the last paragraph.
