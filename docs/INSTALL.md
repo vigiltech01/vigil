@@ -84,7 +84,8 @@ the machine offers - `ss`, `netstat`, the kernel tables in `/proc/net`, or a rea
 with *"address already in use"*, the installer reconfigures itself (existing log file, or another port) and retries once.
 
 Useful options: `--dry-run` (only show what it would configure), `--yes` (no questions), `--log-file /path/to/file` (skip detection),
-`--receiver` (always use the built-in receiver), `--port N` (the FortiGate sends to a port other than 514).
+`--receiver` (always use the built-in receiver), `--port N` (the FortiGate sends to a port other than 514),
+`--no-pull` (keep the image already on the machine instead of refreshing it).
 
 **Manual install** (same result on a machine where port 514 is free):
 

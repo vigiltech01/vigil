@@ -11,6 +11,8 @@
   now tries `ss`, `netstat`, the kernel tables in `/proc/net` and finally a real bind, never treats an unverifiable port as
   free, and if `docker compose up -d` still hits a used port it switches to the existing syslog file (or a free port) and
   retries once.
+- `install.sh` refreshes the container image (`docker compose pull`) before starting, so an image left from an earlier
+  install is not silently reused - that could run a version older than the settings just written. `--no-pull` keeps it.
 - Ingest follows `copytruncate` log rotation; `VIGIL_BACKFILL_DAYS` limits how much old rotated syslog is read on first start.
 - Docs: installing Docker with the Compose v2 plugin, and a troubleshooting table for common Docker install errors.
 

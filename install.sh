@@ -20,11 +20,12 @@
 #   --port N             syslog port the FortiGate sends to on this host (default 514)
 #   --log-file PATH      use this existing syslog file (skips detection)
 #   --receiver           always use the built-in receiver
+#   --no-pull            do not refresh the container image before starting
 #   --scan-dir DIR       where to look for FortiGate log files (default /var/log)
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 
-YES=0; DRY=0; START=1; PORT=514; LOG_FILE=""; FORCE_RECEIVER=0; SCAN_DIR=/var/log
+YES=0; DRY=0; START=1; PULL=1; PORT=514; LOG_FILE=""; FORCE_RECEIVER=0; SCAN_DIR=/var/log
 while [ $# -gt 0 ]; do
   case "$1" in
     -y|--yes) YES=1 ;;
@@ -33,6 +34,7 @@ while [ $# -gt 0 ]; do
     --port) PORT=$2; shift ;;
     --log-file) LOG_FILE=$2; shift ;;
     --receiver) FORCE_RECEIVER=1 ;;
+    --no-pull) PULL=0 ;;
     --scan-dir) SCAN_DIR=$2; shift ;;
     -h|--help) sed -n '2,/^set -euo/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option: $1 (see ./install.sh --help)"; exit 2 ;;
@@ -278,6 +280,14 @@ write_input_env
 [ $DRY = 1 ] && exit 0
 ok "settings saved in .env ($MODE input)"
 [ $START = 1 ] || { say "Start later with: docker compose up -d"; exit 0; }
+
+# `docker compose up -d` only pulls when no local image exists, so an older image left from a previous install would
+# keep running - including versions that predate settings written above. Refresh it first; failure is not fatal
+# (offline installs, or a locally built image).
+if [ $PULL = 1 ]; then
+  say "Fetching the current image ..."
+  "${DOCKER[@]}" compose pull -q 2>/dev/null || warn "could not fetch a newer image - using the one already on this machine"
+fi
 
 OUT=$(mktemp); trap 'rm -f "$OUT"' EXIT
 start_stack() {
