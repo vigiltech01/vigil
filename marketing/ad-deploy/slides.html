@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vigil - deploy ad slides</title>
+<style>
+  :root{
+    --bg:#000; --ink:#f5f5f7; --dim:#86868b; --line:rgba(255,255,255,.10);
+    --card:#141416; --blue:#3e6ae1; --green:#30d158; --amber:#fab219; --red:#ff453a;
+    --sans:"Segoe UI Variable Display","Segoe UI",-apple-system,Inter,Roboto,sans-serif;
+    --mono:"Cascadia Mono",Consolas,"SF Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1080px;height:1350px;background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden}
+  body{display:grid;place-items:center}
+  .slide{display:none;width:1080px;height:1350px;padding:96px 84px;position:relative;
+    background:radial-gradient(1100px 760px at 50% 18%,#0e1526 0%,#05070c 58%,#000 100%)}
+  body[data-s="1"] .s1,body[data-s="2"] .s2,body[data-s="3"] .s3,body[data-s="4"] .s4,
+  body[data-s="5"] .s5,body[data-s="6"] .s6,body[data-s="7"] .s7,body[data-s="8"] .s8,
+  body[data-s="9"] .s9,body[data-s="10"] .s10,body[data-s="11"] .s11,body[data-s="12"] .s12{display:flex;flex-direction:column}
+  .brand{position:absolute;top:56px;left:84px;display:flex;align-items:center;gap:14px;letter-spacing:.36em;
+    font-size:22px;font-weight:600;color:#fff;opacity:.92}
+  .brand i{display:block;width:30px;height:30px;background:conic-gradient(from 210deg,#3e6ae1,#7aa2ff,#3e6ae1);
+    clip-path:polygon(50% 0,100% 28%,50% 100%,0 28%)}
+  .foot{position:absolute;bottom:56px;left:84px;right:84px;display:flex;justify-content:space-between;
+    font-size:22px;color:var(--dim);letter-spacing:.02em}
+  h1{font-size:96px;line-height:1.02;letter-spacing:-.035em;font-weight:650}
+  h2{font-size:70px;line-height:1.06;letter-spacing:-.03em;font-weight:600}
+  .lede{font-size:38px;line-height:1.35;color:#d7d7db;margin-top:34px;max-width:850px}
+  .mid{margin:auto 0}
+  .dim{color:var(--dim)}
+  .accent{color:#7aa2ff}
+  .term{background:#0b0b0d;border:1px solid var(--line);border-radius:20px;padding:34px 36px;font-family:var(--mono);
+    font-size:29px;line-height:1.62;box-shadow:0 40px 90px rgba(0,0,0,.6)}
+  .term .bar{display:flex;gap:10px;margin-bottom:24px}
+  .term .bar i{width:14px;height:14px;border-radius:50%;background:#2c2c30}
+  .term .p{color:#6f7cff}
+  .ok{color:var(--green)} .warn{color:var(--amber)} .muted{color:#7d7d84}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:44px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:30px 32px}
+  .card b{display:block;font-size:34px;font-weight:600;margin-bottom:10px}
+  .card span{font-size:26px;color:var(--dim);line-height:1.4}
+  .big{font-size:150px;font-weight:650;letter-spacing:-.05em;line-height:1}
+  .row{display:flex;align-items:center;gap:22px;font-size:34px;margin-top:22px}
+  .tick{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;flex:none;
+    background:rgba(48,209,88,.14);color:var(--green);font-size:26px}
+  .pill{display:inline-flex;align-items:center;gap:12px;padding:12px 26px;border-radius:999px;
+    border:1px solid var(--line);font-size:28px;color:#cfd0d6}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:40px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px}
+  .stat b{display:block;font-size:52px;font-weight:650;letter-spacing:-.02em}
+  .stat span{font-size:23px;color:var(--dim)}
+  .ui{background:var(--card);border:1px solid var(--line);border-radius:22px;overflow:hidden;margin-top:40px}
+  .ui .hd{padding:22px 28px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;
+    font-size:24px;color:var(--dim)}
+  .ui .bd{padding:28px}
+  .bar-row{display:flex;align-items:center;gap:18px;margin:16px 0;font-size:26px}
+  .bar-row .lbl{width:290px;color:#d7d7db}
+  .bar-row .track{flex:1;height:14px;border-radius:8px;background:#1f1f23;overflow:hidden}
+  .bar-row .track i{display:block;height:100%}
+  .bar-row .num{width:110px;text-align:right;color:#fff;font-family:var(--mono);font-size:24px}
+  .globe{position:relative;height:430px;margin-top:36px}
+  .globe .ring{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;
+    border:1px solid rgba(122,162,255,.35)}
+  .globe .r1{width:330px;height:330px} .globe .r2{width:430px;height:430px;border-style:dashed;opacity:.5}
+  .globe .core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:150px;height:150px;
+    border-radius:50%;background:radial-gradient(circle at 40% 35%,#7aa2ff,#1b3ea8);box-shadow:0 0 90px rgba(62,106,225,.6)}
+  .dot{position:absolute;width:12px;height:12px;border-radius:50%}
+  .trail{position:absolute;height:2px;transform-origin:left center;opacity:.55}
+  .cta{font-family:var(--mono);font-size:40px;color:#fff;background:#111114;border:1px solid var(--line);
+    border-radius:16px;padding:26px 32px;margin-top:42px;text-align:center;letter-spacing:.01em}
+</style>
+</head>
+<body data-s="1">
+
+<!-- 1 hook -->
+<section class="slide s1">
+  <div class="brand"><i></i>VIGIL</div>
+  <div class="mid">
+    <h1>Your FortiGate<br>logged everything<br>today.</h1>
+    <p class="lede">Nobody read a line of it.</p>
+  </div>
+  <div class="foot"><span>Free · open source</span><span>Vigil F·Tech</span></div>
+</section>
+
+<!-- 2 promise -->
+<section class="slide s2">
+  <div class="brand"><i></i>VIGIL</div>
+  <div class="mid">
+    <h2>One Linux VM.<br>One command.</h2>
+    <div class="big accent" style="margin-top:40px">~60s</div>
+    <p class="lede">From a blank Ubuntu box to a dashboard of your firewall traffic.</p>
+  </div>
+  <div class="foot"><span>Docker · self-hosted</span><span>github.com/vigiltech01/vigil</span></div>
+</section>
+
+<!-- 3 requirements -->
+<section class="slide s3">
+  <div class="brand"><i></i>VIGIL</div>
+  <div class="mid">
+    <h2>What you need</h2>
+    <div class="cards">
+      <div class="card"><b>Any Linux VM</b><span>Ubuntu, Debian, Rocky — anything that runs Docker</span></div>
+      <div class="card"><b>2 vCPU · 2 GB</b><span>It fits in a small VM. 4 GB if you keep 30 days</span></div>
+      <div class="card"><b>Docker + Compose</b><span>The only dependency</span></div>
+      <div class="card"><b>Your syslog</b><span>The feed your FortiGate already sends</span></div>
+    </div>
+    <div class="row"><span class="tick">✓</span><span class="dim">No agent. No API key. Nothing installed on the firewall.</span></div>
+  </div>
+  <div class="foot"><span>Step 1 of 4</span><span>Requirements</span></div>
+</section>
+
+<!-- 4 install command -->
+<section class="slide s4">
+  <div class="brand"><i></i>VIGIL</div>
+  <div class="mid">
+    <h2>Install</h2>
+    <div class="term" style="margin-top:44px">
+      <div class="bar"><i></i><i></i><i></i></div>
+      <div><span class="p">admin@logvm:~$</span> git clone https://github.com/vigiltech01/vigil.git</div>
+      <div class="muted">Cloning into 'vigil'... done.</div>
+      <div><span class="p">admin@logvm:~$</span> cd vigil &amp;&amp; ./install.sh</div>
+      <div class="ok">✓ Docker 27.3 with Compose v2</div>
+    </div>
+  </div>
+  <div class="foot"><span>Step 2 of 4</span><span>Two commands</span></div>
+</section>
+
+<!-- 5 port 514 handling -->
+<section class="slide s5">
+  <div class="brand"><i></i>VIGIL</div>
+  <div class="mid">
+    <h2>It checks port 514<br>before it starts</h2>
+    <div class="term" style="margin-top:40px">
+      <div class="warn">! Port 514 is in use by rsyslogd</div>
+      <div class="muted">Looking for FortiGate logs under /var/log ...</div>
+      <div class="ok">✓ found 2,093 FortiGate lines in /var/log/syslog</div>
+      <div class="muted">Vigil will read this file read-only;</div>
+      <div class="muted">the syslog server and the FortiGate stay as they are.</div>
+    </div>
+    <div class="row"><span class="tick">✓</span><span class="dim">Already collecting syslog? It reads that file instead.</span></div>
+  </div>
+  <div class="foot"><span>Step 3 of 4</span><span>No conflict, no firewall change</span></div>
+</section>
+
+<!-- 6 start + backfill -->
+<section class="slide s6">
+  <div class="brand"><i></i>VIGIL</div>
+  <div class="mid">
+    <h2>It starts and tells you<br>how long the history takes</h2>
+    <div class="term" style="margin-top:40px">
+      <div class="ok">✓ settings saved in .env (file input)</div>
+      <div class="muted">Fetching the current image ...</div>
+      <div class="ok">✓ Vigil is running</div>
+      <div style="margin-top:14px">History on this machine: <span class="accent">2.4 GB</span> — about <span class="accent">34 min</span></div>
+      <div class="muted">Pages fill in while it reads. Live logs appear at once.</div>
+    </div>
+  </div>
+  <div class="foot"><span>Step 4 of 4</span><span>Running</span></div>
+</section>
+
+<!-- 7 open browser -->
+<section class="slide s7">
+  <div class="brand"><i></i>VIGIL</div>
+  <div class="mid">
+    <h2>Open it</h2>
+    <div class="cta" style="margin-top:44px">http://&lt;your-vm&gt;:8080</div>
+    <div class="row"><span class="tick">1</span><span>Create the admin account</span></div>
+    <div class="row"><span class="tick">2</span><span>Upload a config backup (optional) to grade rules</span></div>
+    <div class="row"><span class="tick">3</span><span>That is the whole install</span></div>
+  </div>
+  <div class="foot"><span>Done</span><span>No cloud. No account. No licence.</span></div>
+</section>
+
+<!-- 8 live 3D -->
+<section class="slide s8">
+  <div class="brand"><i></i>VIGIL</div>
+  <div class="mid">
+    <h2>Then you can see it</h2>
+    <p class="lede" style="margin-top:22px">Every inbound request, live. Each particle is one real log line — click it and read the record.</p>
+    <div class="globe">
+      <div class="ring r2"></div><div class="ring r1"></div><div class="core"></div>
+      <div class="trail" style="left:120px;top:110px;width:250px;background:linear-gradient(90deg,transparent,#ff453a);transform:rotate(28deg)"></div>
+      <div class="dot" style="left:360px;top:242px;background:#ff453a;box-shadow:0 0 22px #ff453a"></div>
+      <div class="trail" style="left:820px;top:90px;width:230px;background:linear-gradient(90deg,#3e6ae1,transparent);transform:rotate(150deg)"></div>
+      <div class="dot" style="left:648px;top:214px;background:#7aa2ff;box-shadow:0 0 22px #7aa2ff"></div>
+      <div class="trail" style="left:150px;top:350px;width:280px;background:linear-gradient(90deg,transparent,#fab219);transform:rotate(-20deg)"></div>
+      <div class="dot" style="left:404px;top:252px;background:#fab219;box-shadow:0 0 22px #fab219"></div>
+      <div class="dot" style="left:250px;top:150px;background:#ff453a;opacity:.6"></div>
+      <div class="dot" style="left:880px;top:300px;background:#7aa2ff;opacity:.6"></div>
+    </div>
+    <div class="grid3">
+      <div class="stat"><b>allowed</b><span>through a rule, to a server</span></div>
+      <div class="stat"><b>denied</b><span>closed port · source not allowed</span></div>
+      <div class="stat"><b>threat</b><span>IPS signature matched</span></div>
+    </div>
+  </div>
+  <div class="foot"><span>Live traffic</span><span>click any particle</span></div>
+</section>
+
+<!-- 9 rule grading -->
+<section class="slide s9">
+  <div class="brand"><i></i>VIGIL</div>
+  <div class="mid">
+    <h2>Every exposed rule,<br>graded</h2>
+    <div class="ui">
+      <div class="hd"><span>Inbound security</span><span>from your config backup</span></div>
+      <div class="bd">
+        <div class="bar-row"><span class="lbl">#1 web-servers-https</span>
+          <span class="track"><i style="width:55%;background:linear-gradient(90deg,#fab219,#ff8a3d)"></i></span><span class="num">55</span></div>
+        <div class="bar-row"><span class="lbl">#5 remote-desktop</span>
+          <span class="track"><i style="width:88%;background:linear-gradient(90deg,#ff6b6b,#ff453a)"></i></span><span class="num">88</span></div>
+        <div class="bar-row"><span class="lbl">#3 mail-inbound</span>
+          <span class="track"><i style="width:34%;background:linear-gradient(90deg,#3e6ae1,#7aa2ff)"></i></span><span class="num">34</span></div>
+        <div style="margin-top:26px;font-size:26px;color:#d7d7db;line-height:1.45">
+          Who can reach it · what it exposes · IPS on or off ·<br>
+          <span class="dim">known exploited CVEs · what the logs show · how to tighten it</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Rule risk</span><span>secrets stripped before storage</span></div>
+</section>
+
+<!-- 10 investigate -->
+<section class="slide s10">
+  <div class="brand"><i></i>VIGIL</div>
+  <div class="mid">
+    <h2>Ask in plain English</h2>
+    <div class="cta" style="text-align:left;font-size:34px">why was 198.51.100.7 blocked?</div>
+    <div class="ui">
+      <div class="hd"><span>Investigation</span><span>30 days · correlated</span></div>
+      <div class="bd" style="font-size:28px;line-height:1.7">
+        <div><span class="ok">✓</span> Source 198.51.100.7 · Germany</div>
+        <div><span class="ok">✓</span> Hit rule <span class="accent">#5 remote-desktop</span> on port 3389</div>
+        <div><span class="warn">!</span> Denied — source not in the allowed list</div>
+        <div class="muted">+ 41 earlier attempts from the same IP in this period</div>
+      </div>
+    </div>
+    <div class="row"><span class="tick">✓</span><span class="dim">Hop by hop, down to the original log line.</span></div>
+  </div>
+  <div class="foot"><span>Investigate</span><span>nothing invented</span></div>
+</section>
+
+<!-- 11 why -->
+<section class="slide s11">
+  <div class="brand"><i></i>VIGIL</div>
+  <div class="mid">
+    <h2>Why it is easy to say yes</h2>
+    <div class="cards">
+      <div class="card"><b>Free forever</b><span>Apache-2.0, no paid tier</span></div>
+      <div class="card"><b>Self-hosted</b><span>No cloud, no telemetry, no account</span></div>
+      <div class="card"><b>Read-only</b><span>It reads syslog. It never touches the firewall</span></div>
+      <div class="card"><b>One container</b><span>Remove it and nothing is left behind</span></div>
+    </div>
+    <div class="row" style="margin-top:34px"><span class="pill">Not a FortiAnalyzer replacement — no archival, no compliance packs</span></div>
+  </div>
+  <div class="foot"><span>Honest scope</span><span>run both if you have one</span></div>
+</section>
+
+<!-- 12 CTA -->
+<section class="slide s12">
+  <div class="brand"><i></i>VIGIL</div>
+  <div class="mid">
+    <h2>Try it on a spare VM</h2>
+    <div class="term" style="margin-top:40px;font-size:31px">
+      <div><span class="p">$</span> git clone https://github.com/vigiltech01/vigil.git</div>
+      <div><span class="p">$</span> cd vigil &amp;&amp; ./install.sh</div>
+    </div>
+    <div class="cta">github.com/vigiltech01/vigil</div>
+    <p class="lede" style="font-size:32px">Free · open source · self-hosted FortiGate log dashboard</p>
+  </div>
+  <div class="foot"><span>Vigil F·Tech</span><span>not affiliated with Fortinet</span></div>
+</section>
+
+<script>
+  const p = new URLSearchParams(location.search);
+  document.body.dataset.s = p.get('s') || '1';
+</script>
+</body>
+</html>
