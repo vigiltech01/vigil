@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Fixed: YAML configuration backups were rejected** with "No firewall policies found". Both the CLI backup and the YAML
+  export start with `#config-version=`, so YAML files were parsed as CLI. The format is now decided by the body, and the
+  YAML loader copes with what FortiOS actually writes: escapes YAML does not define (' inside quoted values), keys that
+  start with an indicator (`- *.bat:` in file filters) and three-part versions in the header (7.4.11). If a section is
+  still unreadable, the sections Vigil needs are loaded one by one so the policies always come through.
+- Inbound Security explains itself on a firewall that publishes nothing to the internet (branch or SD-WAN office
+  firewall) instead of showing an empty grade.
+
 - **Works next to an existing syslog server.** New `install.sh` checks Docker and port 514 before starting. When the host
   already receives the FortiGate with rsyslog/syslog-ng (port 514 taken), Vigil reads that log file and its rotations
   read-only (`VIGIL_INPUT=file`) instead of failing with "address already in use"; the syslog server and the FortiGate are

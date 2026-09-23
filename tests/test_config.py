@@ -99,3 +99,70 @@ def test_live_change_replay_and_chunks(demo):
     assert [r['status'] for r in recs] == ['applied', 'applied', 'order unknown']
     assert recs[0]['text'] == 'Rule 5: disabled'
     assert 'partner-3' in recs[1]['text']
+
+
+# A FortiOS YAML export is not valid YAML: values contain escapes YAML does not define (\' inside a
+# "quoted" string) and file-filter keys start with * (YAML reads that as an alias). It also begins with the
+# same "#config-version=" header as the CLI backup, so the format must be detected from the body.
+FORTIOS_YAML = r'''#config-version=FGVM64-7.4.11-FW-build2878-260126:opmode=0:vdom=0:user=admin
+#conf_file_ver=1
+#buildno=2878
+system_global:
+    hostname: "fgt-test"
+    admin-sport: 8443
+firewall_address:
+    - test-host:
+        subnet: "198.51.100.10 255.255.255.255"
+file-filter_profile:
+    - builtin-patterns:
+        entries:
+            - *.bat:
+                action: block
+
+            - *.com:
+                action: block
+log_eventfilter:
+    - setting:
+        description: "An administrator\'s session that changed a FortiGate\'s configuration has ended."
+firewall_policy:
+    - 12:
+        name: "web-in"
+        srcintf: "wan1"
+        dstintf: "lan"
+        srcaddr: "all"
+        dstaddr: ["web-server"]
+        action: accept
+        service: ["HTTPS"]
+        status: enable
+    - 13:
+        name: "disabled-rule"
+        status: disable
+        srcintf: "wan1"
+        dstintf: "lan"
+        srcaddr: "all"
+        dstaddr: "all"
+'''
+
+
+def test_yaml_export_with_fortios_quirks():
+    """The real FortiOS YAML export parses: header-based format detection, stray escapes and * keys."""
+    clean, info = fgconf.import_backup(FORTIOS_YAML.encode(), 'FortiGate_7-4_2878_202601011200.conf.yaml')
+    assert info['format'] == 'yaml', 'YAML export must not be parsed as CLI'
+    assert info['model'] == 'FGVM64' and info['version'] == '7.4.11'      # three-part version in the header
+    assert info['policies'] == 2 and info['addresses'] == 1
+    assert clean['system_global']['admin-sport'] == 8443
+    assert [str(list(p)[0]) for p in clean['firewall_policy']] == ['12', '13']    # YAML ids are ints, CLI ids strings
+    m = rules.Model(clean)                                   # grading must work with either
+    assert m.by_id[12]['name'] == 'web-in' and m.by_id[13]['status'] == 'disable'
+
+
+def test_yaml_loader_helpers():
+    bs = chr(92)                                             # a literal backslash before the apostrophe
+    bad_escape = 'a:\n    b: "an administrator' + bs + "'s file\"\n"
+    assert fgconf.load_yaml(bad_escape)['a']['b'] == "an administrator's file"
+    alias_key = 'entries:\n    - *.bat:\n        action: block\n'
+    assert 'action' in str(fgconf.load_yaml(alias_key))
+    # a section Vigil does not need may stay unreadable; the policies must still load
+    mixed = FORTIOS_YAML.replace('        entries:', '        entries: [unclosed\n        more:')
+    info = fgconf.import_backup(mixed.encode(), 'x.conf.yaml')[1]
+    assert info['policies'] == 2 and info['addresses'] == 1

@@ -21,11 +21,84 @@ KEEP = {
 }
 SECRET_KEY = re.compile(r'pass|secret|psk|private|key|cert|token|community|auth-pwd|md5|sha|cookie|hash|salt', re.I)
 INT_FIELDS = {'admin-sport', 'admin-port', 'admin-ssh-port', 'port'}
-HEADER = re.compile(r'#config-version=([A-Z0-9]+)-(\d+)\.(\d+)-FW-build(\d+)')
+HEADER = re.compile(r'#config-version=([A-Z0-9]+)-(\d+)\.(\d+)(?:\.(\d+))?-FW-build(\d+)')
+# Both formats start with "#config-version=", so the format is decided by what the body looks like:
+# CLI has "config <section>" blocks, the YAML export has top-level "section_name:" keys.
+CLI_MARK = re.compile(r'(?m)^\s*config [a-z]')
+YAML_MARK = re.compile(r'(?m)^[A-Za-z][\w.-]*:\s*$')
+YAML_ESCAPES = set('0abtnvfre "/\\N_LPxuU\n')     # everything YAML allows after a backslash in a "quoted" scalar
 
 
 class ConfigError(ValueError):
     pass
+
+
+# ---------------------------------------------------------------- YAML format
+def _fix_escapes(text):
+    """FortiOS writes escapes YAML does not define - e.g. administrator\\'s inside a "quoted" value.
+    Strip the stray backslash inside double-quoted scalars; everything else is left untouched."""
+    out = []
+    for line in text.splitlines(True):
+        if '\\' not in line or '"' not in line:
+            out.append(line)
+            continue
+        res, i, quoted = [], 0, False
+        while i < len(line):
+            c = line[i]
+            if quoted and c == '\\' and i + 1 < len(line):
+                nxt = line[i + 1]
+                res.append(c + nxt if nxt in YAML_ESCAPES else nxt)
+                i += 2
+                continue
+            if c == '"':
+                quoted = not quoted
+            res.append(c)
+            i += 1
+        out.append(''.join(res))
+    return ''.join(out)
+
+
+def _quote_indicators(text):
+    """Quote keys/values that begin with a YAML indicator, e.g. the file-filter entries "- *.bat:" which YAML
+    would read as an alias."""
+    text = re.sub(r'(?m)^(\s*-\s+)([*&@`%][^\s:"]*)(\s*:)', r'\1"\2"\3', text)
+    return re.sub(r'(?m)^(\s*[\w.-]+:[ \t]+)([*&@`%][^\s"]*)[ \t]*$', r'\1"\2"', text)
+
+
+def _sections(text):
+    """A FortiOS YAML export split into its top-level sections: {name: block text}."""
+    marks = [(m.start(), m.group(1)) for m in re.finditer(r'(?m)^([A-Za-z][\w.-]*):[ \t]*$', text)]
+    return {name: text[start:(marks[i + 1][0] if i + 1 < len(marks) else len(text))]
+            for i, (start, name) in enumerate(marks)}
+
+
+def load_yaml(text):
+    """FortiOS YAML exports are not quite valid YAML; parse them anyway."""
+    fixed = None
+    for attempt in (lambda: text, lambda: _quote_indicators(_fix_escapes(text))):
+        try:
+            fixed = attempt()
+            return yaml.safe_load(fixed)
+        except yaml.YAMLError:
+            continue
+    # Still broken somewhere: read the sections Vigil needs one by one, so one malformed section elsewhere
+    # in the backup cannot stop the policies from loading.
+    tree, skipped = {}, []
+    for name, block in _sections(fixed or text).items():
+        if name not in KEEP:
+            continue
+        try:
+            part = yaml.safe_load(block)
+        except yaml.YAMLError:
+            skipped.append(name)
+            continue
+        if isinstance(part, dict):
+            tree.update(part)
+    if not tree:
+        raise yaml.YAMLError('no readable section found')
+    if skipped:
+        tree['_skipped_sections'] = skipped
+    return tree
 
 
 # ---------------------------------------------------------------- CLI format
@@ -163,13 +236,15 @@ def import_backup(data, filename='backup.conf', backup_ms=None, vdom='root'):
     info = {'filename': filename, 'format': None, 'model': None, 'version': None, 'build': None, 'vdoms': []}
     m = HEADER.search(head)
     if m:
-        info.update(model=m.group(1), version=f'{int(m.group(2))}.{int(m.group(3))}', build=m.group(4))
-    if 'config firewall policy' in text or head.lstrip().startswith('#config-version'):
+        ver = f'{int(m.group(2))}.{int(m.group(3))}' + (f'.{int(m.group(4))}' if m.group(4) else '')
+        info.update(model=m.group(1), version=ver, build=m.group(5))
+    sample = text[:500_000]
+    if len(CLI_MARK.findall(sample)) > len(YAML_MARK.findall(sample)):
         info['format'] = 'cli'
         tree, info['vdoms'] = _flatten_cli(parse_cli(text), vdom)
     else:
         try:
-            tree = yaml.safe_load(text)
+            tree = load_yaml(text)
         except yaml.YAMLError as e:
             raise ConfigError(f'Not a FortiOS configuration backup (CLI or YAML): {e}') from e
         if not isinstance(tree, dict):

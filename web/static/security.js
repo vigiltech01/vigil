@@ -29,10 +29,18 @@ PAGES.security = {
            ${last ? ` · last: <a href="#security?tab=changes">${esc(last.text)}</a> <span class="muted">(${esc(fmtT(last.ts, 'dhm'))} by ${esc(last.user || '?')})</span>` : ''}
            ${Object.keys(lv.position_unknown || {}).length ? ` · <span class="warnt">⚠ rule order may have changed</span>` : ''}</div>`
         : `<span class="muted">Config ${esc(d.config.file || '')}.</span>`;
-      banner($('#sec-banner'), `Inbound security grade ${p.grade} · ${p.levels.critical} critical and ${p.levels.high} high-risk rules`,
-        `${p.accept_rules} rules let internet traffic in to ${p.servers} servers. <b>${p.open_to_anyone}</b> of them are open to anyone on the internet and
-        <b>${p.no_ips}</b> have no intrusion prevention (IPS). ${worst ? `Riskiest: <b>rule ${worst.id} “${esc(worst.name)}”</b> - ${esc(worst.summary)}` : ''}
-        ${cfgLine}`, p.levels.critical ? 'bad' : p.levels.high ? '' : 'ok');
+      if (!p.accept_rules) {    // e.g. a branch firewall: nothing is published to the internet, so there is nothing to grade
+        banner($('#sec-banner'), 'No rules let traffic in from the internet',
+          `This configuration has <b>${p.rules_total}</b> rules, but none of them accepts traffic arriving on a WAN interface,
+           so there is no inbound exposure to grade. What still matters here: <b>remote access</b> (SSL-VPN / IPsec) and
+           <b>who may reach the firewall itself</b> - see <a href="#security?tab=admin">Firewall admin access</a> - plus the
+           attacks the logs show below. ${cfgLine}`, 'ok');
+      } else {
+        banner($('#sec-banner'), `Inbound security grade ${p.grade} · ${p.levels.critical} critical and ${p.levels.high} high-risk rules`,
+          `${p.accept_rules} rules let internet traffic in to ${p.servers} servers. <b>${p.open_to_anyone}</b> of them are open to anyone on the internet and
+          <b>${p.no_ips}</b> have no intrusion prevention (IPS). ${worst ? `Riskiest: <b>rule ${worst.id} “${esc(worst.name)}”</b> - ${esc(worst.summary)}` : ''}
+          ${cfgLine}`, p.levels.critical ? 'bad' : p.levels.high ? '' : 'ok');
+      }
     }
     const lvc = d.config.live;
     const tabs = [['summary', 'Summary'], ['rules', 'Rules & exposure', p.accept_rules], ['attacks', 'Attacks detected', attacks],
